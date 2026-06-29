@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import sqlite3
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -113,8 +112,9 @@ class AramunjHandler(SimpleHTTPRequestHandler):
 
 def main() -> None:
     port = int(os.environ.get("PORT", "5179"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), AramunjHandler)
-    print(f"Aramunj Group LLC site running at http://127.0.0.1:{port}", flush=True)
+    host = os.environ.get("HOST", "0.0.0.0")
+    server = ThreadingHTTPServer((host, port), AramunjHandler)
+    print(f"Aramunj Group LLC site running at http://{host}:{port}", flush=True)
     server.serve_forever()
 
 

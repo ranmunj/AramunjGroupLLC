@@ -20,3 +20,20 @@ python server.py
 ```
 
 When `DATABASE_URL` or `psycopg` is not available, submissions are stored in `data/leads.jsonl` so inquiries are not lost during local development.
+
+## Render Deployment
+
+Use these settings when creating the Render web service:
+
+```text
+Root Directory: leave blank
+Build Command: pip install -r requirements.txt
+Start Command: python server.py
+Branch: AramunjgroupLLc
+```
+
+Add the Render Postgres connection string as an environment variable:
+
+```text
+DATABASE_URL=postgresql://...
+```
