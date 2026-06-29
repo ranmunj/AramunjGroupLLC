@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Aramunj Group LLC mark">
+  <defs>
+    <linearGradient id="blue" x1="20" y1="108" x2="102" y2="16" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6ec2ff"/>
+      <stop offset=".46" stop-color="#1169ff"/>
+      <stop offset="1" stop-color="#032b78"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="60" y1="112" x2="112" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08111f"/>
+      <stop offset="1" stop-color="#43556a"/>
+    </linearGradient>
+  </defs>
+  <path d="M15 101 58 23c4-7 14-7 18 0l41 78H92L67 52l-27 49H15Z" fill="url(#blue)"/>
+  <path d="M49 101h16V68H49v33Zm22 0h16V50H71v51Z" fill="#0a66ff"/>
+  <path d="M28 101 70 57c15-15 34-23 54-24-25 6-46 19-62 39L39 101H28Z" fill="#fff"/>
+  <path d="M57 101 82 65h34v13H91l-7 10h33v13H57Z" fill="url(#dark)"/>
+</svg>
