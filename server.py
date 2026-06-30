@@ -119,6 +119,25 @@ def smtp_configured() -> bool:
     )
 
 
+def deliver_email(
+    message: EmailMessage,
+    host: str,
+    port: int,
+    username: str,
+    password: str,
+    use_ssl: bool,
+) -> None:
+    if use_ssl:
+        with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context()) as server:
+            server.login(username, password)
+            server.send_message(message)
+    else:
+        with smtplib.SMTP(host, port) as server:
+            server.starttls(context=ssl.create_default_context())
+            server.login(username, password)
+            server.send_message(message)
+
+
 def send_inquiry_email(lead: dict) -> str:
     if not smtp_configured():
         return "not_configured"
@@ -153,15 +172,12 @@ def send_inquiry_email(lead: dict) -> str:
     requested_ssl = os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes")
     use_ssl = requested_ssl and port == 465
 
-    if use_ssl:
-        with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context()) as server:
-            server.login(username, password)
-            server.send_message(message)
-    else:
-        with smtplib.SMTP(host, port) as server:
-            server.starttls(context=ssl.create_default_context())
-            server.login(username, password)
-            server.send_message(message)
+    try:
+        deliver_email(message, host, port, username, password, use_ssl)
+    except ssl.SSLError:
+        if not use_ssl:
+            raise
+        deliver_email(message, host, port, username, password, False)
 
     return "sent"
 
