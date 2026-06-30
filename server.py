@@ -12,6 +12,14 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 LOCAL_JSONL = DATA_DIR / "leads.jsonl"
+DATABASE_ENV_KEYS = (
+    "DATABASE_URL",
+    "RENDER_DATABASE_URL",
+    "POSTGRES_URL",
+    "POSTGRESQL_URL",
+    "POSTGRESQL",
+    "postgresql",
+)
 
 
 def truthy(value: str | None) -> bool:
@@ -44,8 +52,20 @@ def validate_lead(payload: dict) -> dict:
     }
 
 
+def get_database_config() -> tuple[str, str]:
+    for key in DATABASE_ENV_KEYS:
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value, key
+    return "", ""
+
+
 def get_database_url() -> str:
-    return os.environ.get("DATABASE_URL", "").strip()
+    return get_database_config()[0]
+
+
+def get_database_env_key() -> str:
+    return get_database_config()[1]
 
 
 def postgres_required() -> bool:
@@ -163,6 +183,7 @@ class AramunjHandler(SimpleHTTPRequestHandler):
                     "ok": True,
                     "postgresConfigured": postgres_configured(),
                     "postgresRequired": postgres_required(),
+                    "postgresEnvKey": get_database_env_key() or None,
                     "emailConfigured": smtp_configured(),
                     "service": "aramunj-group-llc",
                 },
@@ -186,7 +207,7 @@ class AramunjHandler(SimpleHTTPRequestHandler):
                         self,
                         HTTPStatus.INTERNAL_SERVER_ERROR,
                         {
-                            "error": "Postgres is required but DATABASE_URL is missing or invalid.",
+                            "error": "Postgres is required but no valid Postgres connection URL is configured.",
                             "storage": "none",
                         },
                     )
