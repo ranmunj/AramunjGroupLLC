@@ -37,3 +37,17 @@ Add the Render Postgres connection string as an environment variable:
 ```text
 DATABASE_URL=postgresql://...
 ```
+
+To route contact inquiries to email while still saving them to Postgres, add SMTP
+settings in Render:
+
+```text
+INQUIRY_RECIPIENT=ranga@aramunj.com
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+SMTP_FROM=no-reply@aramunj.com
+```
+
+Use `SMTP_SSL=true` only if your provider requires SSL on port `465`.

@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import smtplib
+import ssl
+from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -69,6 +72,59 @@ def save_locally(lead: dict) -> None:
         stream.write(json.dumps(lead) + "\n")
 
 
+def smtp_configured() -> bool:
+    return all(
+        os.environ.get(name)
+        for name in ("SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM")
+    )
+
+
+def send_inquiry_email(lead: dict) -> str:
+    if not smtp_configured():
+        return "not_configured"
+
+    recipient = os.environ.get("INQUIRY_RECIPIENT", "ranga@aramunj.com")
+    subject = f"New Aramunj inquiry: {lead['interest']}"
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = os.environ["SMTP_FROM"]
+    message["To"] = recipient
+    message["Reply-To"] = lead["email"]
+    message.set_content(
+        "\n".join(
+            [
+                "A new inquiry was submitted through aramunj.com.",
+                "",
+                f"Name: {lead['name']}",
+                f"Email: {lead['email']}",
+                f"Organization: {lead['organization'] or 'Not provided'}",
+                f"Interest: {lead['interest']}",
+                "",
+                "Message:",
+                lead["message"],
+            ]
+        )
+    )
+
+    host = os.environ["SMTP_HOST"]
+    port = int(os.environ.get("SMTP_PORT", "587"))
+    username = os.environ["SMTP_USERNAME"]
+    password = os.environ["SMTP_PASSWORD"]
+    use_ssl = os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes")
+
+    if use_ssl:
+        with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context()) as server:
+            server.login(username, password)
+            server.send_message(message)
+    else:
+        with smtplib.SMTP(host, port) as server:
+            server.starttls(context=ssl.create_default_context())
+            server.login(username, password)
+            server.send_message(message)
+
+    return "sent"
+
+
 class AramunjHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -81,6 +137,7 @@ class AramunjHandler(SimpleHTTPRequestHandler):
                 {
                     "ok": True,
                     "postgresConfigured": bool(os.environ.get("DATABASE_URL")),
+                    "emailConfigured": smtp_configured(),
                     "service": "aramunj-group-llc",
                 },
             )
@@ -99,10 +156,18 @@ class AramunjHandler(SimpleHTTPRequestHandler):
             stored_in_postgres = save_to_postgres(lead)
             if not stored_in_postgres:
                 save_locally(lead)
+            try:
+                email_status = send_inquiry_email(lead)
+            except Exception as error:
+                email_status = f"failed: {error}"
             json_response(
                 self,
                 HTTPStatus.CREATED,
-                {"ok": True, "storage": "postgres" if stored_in_postgres else "local"},
+                {
+                    "ok": True,
+                    "storage": "postgres" if stored_in_postgres else "local",
+                    "email": email_status,
+                },
             )
         except ValueError as error:
             json_response(self, HTTPStatus.BAD_REQUEST, {"error": str(error)})
