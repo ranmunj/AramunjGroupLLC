@@ -14,6 +14,10 @@ DATA_DIR = ROOT / "data"
 LOCAL_JSONL = DATA_DIR / "leads.jsonl"
 
 
+def truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def json_response(handler: SimpleHTTPRequestHandler, status: int, payload: dict) -> None:
     body = json.dumps(payload).encode("utf-8")
     handler.send_response(status)
@@ -40,9 +44,25 @@ def validate_lead(payload: dict) -> dict:
     }
 
 
-def save_to_postgres(lead: dict) -> bool:
-    database_url = os.environ.get("DATABASE_URL")
+def get_database_url() -> str:
+    return os.environ.get("DATABASE_URL", "").strip()
+
+
+def postgres_required() -> bool:
+    return truthy(os.environ.get("REQUIRE_POSTGRES")) or truthy(os.environ.get("RENDER"))
+
+
+def postgres_configured() -> bool:
+    database_url = get_database_url()
     if not database_url:
+        return False
+    placeholder_parts = ("user:password@host", "your_render_postgres_url", "postgresql://...")
+    return not any(part in database_url for part in placeholder_parts)
+
+
+def save_to_postgres(lead: dict) -> bool:
+    database_url = get_database_url()
+    if not postgres_configured():
         return False
 
     try:
@@ -141,7 +161,8 @@ class AramunjHandler(SimpleHTTPRequestHandler):
                 HTTPStatus.OK,
                 {
                     "ok": True,
-                    "postgresConfigured": bool(os.environ.get("DATABASE_URL")),
+                    "postgresConfigured": postgres_configured(),
+                    "postgresRequired": postgres_required(),
                     "emailConfigured": smtp_configured(),
                     "service": "aramunj-group-llc",
                 },
@@ -160,6 +181,16 @@ class AramunjHandler(SimpleHTTPRequestHandler):
             lead = validate_lead(payload)
             stored_in_postgres = save_to_postgres(lead)
             if not stored_in_postgres:
+                if postgres_required():
+                    json_response(
+                        self,
+                        HTTPStatus.INTERNAL_SERVER_ERROR,
+                        {
+                            "error": "Postgres is required but DATABASE_URL is missing or invalid.",
+                            "storage": "none",
+                        },
+                    )
+                    return
                 save_locally(lead)
             try:
                 email_status = send_inquiry_email(lead)

@@ -21,6 +21,14 @@ python server.py
 
 When `DATABASE_URL` or `psycopg` is not available, submissions are stored in `data/leads.jsonl` so inquiries are not lost during local development.
 
+To force local development to use Postgres instead of the local JSONL fallback:
+
+```powershell
+$env:REQUIRE_POSTGRES="true"
+$env:DATABASE_URL="postgresql://user:password@host:5432/database"
+python server.py
+```
+
 ## Render Deployment
 
 Use these settings when creating the Render web service:
@@ -36,7 +44,10 @@ Add the Render Postgres connection string as an environment variable:
 
 ```text
 DATABASE_URL=postgresql://...
+REQUIRE_POSTGRES=true
 ```
+
+Use the real Render Postgres Internal Database URL, not placeholder text.
 
 To route contact inquiries to email while still saving them to Postgres, add SMTP
 settings in Render:
