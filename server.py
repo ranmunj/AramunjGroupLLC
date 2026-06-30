@@ -83,7 +83,7 @@ def send_inquiry_email(lead: dict) -> str:
     if not smtp_configured():
         return "not_configured"
 
-    recipient = os.environ.get("INQUIRY_RECIPIENT", "ranga@aramunj.com")
+    recipient = os.environ.get("INQUIRY_RECIPIENT", "ranga@aramunj.com, info@aramunj.com")
     subject = f"New Aramunj inquiry: {lead['interest']}"
     message = EmailMessage()
     message["Subject"] = subject

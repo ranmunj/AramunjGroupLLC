@@ -42,7 +42,7 @@ To route contact inquiries to email while still saving them to Postgres, add SMT
 settings in Render:
 
 ```text
-INQUIRY_RECIPIENT=ranga@aramunj.com
+INQUIRY_RECIPIENT=ranga@aramunj.com, info@aramunj.com
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USERNAME=your_smtp_username
