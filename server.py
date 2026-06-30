@@ -150,7 +150,8 @@ def send_inquiry_email(lead: dict) -> str:
     port = int(os.environ.get("SMTP_PORT", "587"))
     username = os.environ["SMTP_USERNAME"]
     password = os.environ["SMTP_PASSWORD"]
-    use_ssl = os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes")
+    requested_ssl = os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes")
+    use_ssl = requested_ssl and port == 465
 
     if use_ssl:
         with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context()) as server:
