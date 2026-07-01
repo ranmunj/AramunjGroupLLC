@@ -126,13 +126,16 @@ def deliver_email(
     username: str,
     password: str,
     use_ssl: bool,
+    timeout: int,
 ) -> None:
     if use_ssl:
-        with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context()) as server:
+        with smtplib.SMTP_SSL(
+            host, port, context=ssl.create_default_context(), timeout=timeout
+        ) as server:
             server.login(username, password)
             server.send_message(message)
     else:
-        with smtplib.SMTP(host, port) as server:
+        with smtplib.SMTP(host, port, timeout=timeout) as server:
             server.starttls(context=ssl.create_default_context())
             server.login(username, password)
             server.send_message(message)
@@ -169,15 +172,16 @@ def send_inquiry_email(lead: dict) -> str:
     port = int(os.environ.get("SMTP_PORT", "587"))
     username = os.environ["SMTP_USERNAME"]
     password = os.environ["SMTP_PASSWORD"]
+    timeout = int(os.environ.get("SMTP_TIMEOUT", "10"))
     requested_ssl = os.environ.get("SMTP_SSL", "").lower() in ("1", "true", "yes")
     use_ssl = requested_ssl and port == 465
 
     try:
-        deliver_email(message, host, port, username, password, use_ssl)
+        deliver_email(message, host, port, username, password, use_ssl, timeout)
     except ssl.SSLError:
         if not use_ssl:
             raise
-        deliver_email(message, host, port, username, password, False)
+        deliver_email(message, host, port, username, password, False, timeout)
 
     return "sent"
 
