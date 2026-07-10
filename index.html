@@ -19,15 +19,46 @@
     <meta property="og:image" content="https://aramunj.com/assets/enterprise-data-platform.jpg" />
     <link rel="canonical" href="https://aramunj.com" />
     <link rel="icon" href="assets/aramunj-mark.svg" type="image/svg+xml" />
-    <link rel="preload" as="image" href="assets/enterprise-data-platform.jpg" />
-    <link rel="preload" as="image" href="assets/founder-ranga-munjanja.jpg" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="preload" as="image" href="assets/enterprise-data-platform.jpg" fetchpriority="high" />
+    <link rel="stylesheet" href="styles.css?v=20260709-3" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        "name": "Aramunj Group LLC",
+        "url": "https://aramunj.com",
+        "logo": "https://aramunj.com/assets/aramunj-mark.svg",
+        "image": "https://aramunj.com/assets/enterprise-data-platform.jpg",
+        "description": "Enterprise data platforms, cloud architecture, AI readiness, and government digital transformation consulting.",
+        "founder": {
+          "@type": "Person",
+          "name": "Ranga Munjanja",
+          "jobTitle": "Founder and Chief Executive Officer"
+        },
+        "address": [
+          {
+            "@type": "PostalAddress",
+            "addressLocality": "Dallas",
+            "addressRegion": "Texas",
+            "addressCountry": "US"
+          },
+          {
+            "@type": "PostalAddress",
+            "addressLocality": "Harare",
+            "addressCountry": "ZW"
+          }
+        ],
+        "email": "info@aramunj.com",
+        "telephone": "+1-945-217-4949",
+        "areaServed": ["United States", "Zimbabwe", "International"]
+      }
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header" data-elevate>
       <a class="brand" href="#home" aria-label="Aramunj Group LLC home">
-        <img src="assets/aramunj-mark.svg" alt="" width="48" height="48" />
+        <img src="assets/aramunj-mark.svg" alt="" width="48" height="48" decoding="async" />
         <span>
           <strong>Aramunj</strong>
           <small>Group LLC</small>
@@ -54,7 +85,14 @@
     <main id="main">
       <section class="hero" id="home">
         <div class="hero-media" aria-hidden="true">
-          <img src="assets/enterprise-data-platform.jpg" alt="" />
+          <img
+            src="assets/enterprise-data-platform.jpg"
+            alt=""
+            width="1180"
+            height="606"
+            fetchpriority="high"
+            decoding="async"
+          />
         </div>
         <div class="hero-content reveal">
           <p class="eyebrow">Data. Connected. Empowered.</p>
@@ -135,6 +173,8 @@
                   alt="Ranga Munjanja Founder and CEO of Aramunj Group LLC"
                   width="570"
                   height="612"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>
@@ -256,6 +296,7 @@
             width="720"
             height="458"
             loading="lazy"
+            decoding="async"
           />
         </div>
         <div class="government-copy reveal">
@@ -423,7 +464,7 @@
     <footer class="site-footer">
       <div>
         <a class="brand footer-brand" href="#home" aria-label="Aramunj Group LLC home">
-          <img src="assets/aramunj-mark.svg" alt="" width="48" height="48" />
+          <img src="assets/aramunj-mark.svg" alt="" width="48" height="48" decoding="async" />
           <span>
             <strong>Aramunj</strong>
             <small>Group LLC</small>
@@ -450,6 +491,6 @@
       <p class="copyright">Copyright © 2026 Aramunj Group LLC</p>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=20260709-3" defer></script>
   </body>
 </html>

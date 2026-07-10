@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
@@ -215,8 +216,15 @@ class AramunjHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def end_headers(self) -> None:
-        if self.path in ("/", "/index.html") or self.path.endswith((".html", ".css", ".js")):
+        request_path = urlsplit(self.path).path
+        if request_path.startswith("/api/"):
             self.send_header("Cache-Control", "no-store")
+        elif request_path in ("/", "/index.html") or request_path.endswith(".html"):
+            self.send_header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+        elif request_path.endswith((".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp")):
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         super().end_headers()
 
     def do_GET(self) -> None:
