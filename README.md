@@ -62,3 +62,14 @@ SMTP_FROM=no-reply@aramunj.com
 ```
 
 Use `SMTP_SSL=true` only if your provider requires SSL on port `465`.
+
+## AWS RDS + DBeaver
+
+For AWS PostgreSQL and DBeaver setup, use:
+
+```text
+docs/aws-dbeaver-setup.md
+```
+
+The same `DATABASE_URL` format works for Render, local development, AWS RDS, and
+DBeaver. Keep real passwords out of Git; `.env` is ignored.
