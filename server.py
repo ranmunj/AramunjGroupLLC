@@ -5,6 +5,7 @@ import os
 import pathlib
 import smtplib
 import ssl
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -36,19 +37,29 @@ def json_response(handler: SimpleHTTPRequestHandler, status: int, payload: dict)
 
 
 def validate_lead(payload: dict) -> dict:
-    required = ("name", "email", "interest", "message")
+    required = ("name", "email", "message")
     missing = [field for field in required if not str(payload.get(field, "")).strip()]
+    project_type = str(payload.get("project_type") or payload.get("interest") or "").strip()
+    if not project_type:
+        missing.append("project_type")
     if missing:
         raise ValueError(f"Missing required fields: {', '.join(missing)}")
     if "@" not in payload["email"]:
         raise ValueError("Please provide a valid email address.")
     return {
         "name": payload["name"].strip(),
+        "company": str(payload.get("company", "")).strip(),
         "email": payload["email"].strip(),
+        "phone": str(payload.get("phone", "")).strip(),
         "organization": str(payload.get("organization", "")).strip(),
-        "interest": payload["interest"].strip(),
+        "country": str(payload.get("country", "")).strip(),
+        "project_type": project_type,
+        "interest": project_type,
+        "budget": str(payload.get("budget", "")).strip(),
         "message": payload["message"].strip(),
         "source": "website",
+        "submitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "ip_address": "",
     }
 
 
@@ -96,9 +107,16 @@ def save_to_postgres(lead: dict) -> bool:
             cur.execute(
                 """
                 INSERT INTO aramunj_leads
-                  (name, email, organization, interest, message, source)
+                  (
+                    name, company, email, phone, organization, country,
+                    project_type, budget, interest, message, source, ip_address
+                  )
                 VALUES
-                  (%(name)s, %(email)s, %(organization)s, %(interest)s, %(message)s, %(source)s)
+                  (
+                    %(name)s, %(company)s, %(email)s, %(phone)s, %(organization)s, %(country)s,
+                    %(project_type)s, %(budget)s, %(interest)s, %(message)s, %(source)s,
+                    %(ip_address)s
+                  )
                 """,
                 lead,
             )
@@ -158,9 +176,15 @@ def send_inquiry_email(lead: dict) -> str:
                 "A new inquiry was submitted through aramunj.com.",
                 "",
                 f"Name: {lead['name']}",
+                f"Company: {lead['company'] or 'Not provided'}",
                 f"Email: {lead['email']}",
+                f"Phone: {lead['phone'] or 'Not provided'}",
                 f"Organization: {lead['organization'] or 'Not provided'}",
-                f"Interest: {lead['interest']}",
+                f"Country: {lead['country'] or 'Not provided'}",
+                f"Project Type: {lead['project_type']}",
+                f"Budget: {lead['budget'] or 'Not provided'}",
+                f"Date Submitted: {lead['submitted_at']}",
+                f"IP Address: {lead['ip_address'] or 'Not available'}",
                 "",
                 "Message:",
                 lead["message"],
@@ -221,6 +245,7 @@ class AramunjHandler(SimpleHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length) or b"{}")
             lead = validate_lead(payload)
+            lead["ip_address"] = self.get_client_ip()
             stored_in_postgres = save_to_postgres(lead)
             if not stored_in_postgres:
                 if postgres_required():
@@ -251,6 +276,12 @@ class AramunjHandler(SimpleHTTPRequestHandler):
             json_response(self, HTTPStatus.BAD_REQUEST, {"error": str(error)})
         except Exception as error:
             json_response(self, HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(error)})
+
+    def get_client_ip(self) -> str:
+        forwarded_for = self.headers.get("X-Forwarded-For", "")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        return self.client_address[0] if self.client_address else ""
 
 
 def main() -> None:
