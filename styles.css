@@ -437,7 +437,7 @@ h3 {
 
 .founder-card {
   display: grid;
-  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(112px, 116px) minmax(0, 1fr);
   gap: 46px;
   align-items: center;
   padding: clamp(18px, 3vw, 32px);
@@ -449,7 +449,7 @@ h3 {
 }
 
 .founder-image {
-  max-width: 340px;
+  max-width: 116px;
   justify-self: center;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.08);
@@ -459,7 +459,7 @@ h3 {
 .founder-image img {
   width: 100%;
   height: auto;
-  max-height: 430px;
+  max-height: 125px;
   object-fit: cover;
   object-position: center top;
 }
@@ -969,7 +969,7 @@ textarea {
   }
 
   .founder-image {
-    width: min(340px, 100%);
+    width: min(116px, 100%);
   }
 
   .highlight-grid {
@@ -1039,7 +1039,7 @@ textarea {
   }
 
   .founder-image img {
-    max-height: 390px;
+    max-height: 125px;
   }
 
   .government-copy {
