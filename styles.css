@@ -436,10 +436,7 @@ h3 {
 }
 
 .founder-card {
-  display: grid;
-  grid-template-columns: minmax(112px, 116px) minmax(0, 1fr);
-  gap: 46px;
-  align-items: center;
+  display: block;
   padding: clamp(18px, 3vw, 32px);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -450,7 +447,7 @@ h3 {
 
 .founder-image {
   max-width: 116px;
-  justify-self: center;
+  flex: 0 0 116px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
@@ -465,8 +462,19 @@ h3 {
 }
 
 .founder-copy {
-  align-self: center;
   padding: clamp(10px, 2vw, 24px);
+}
+
+.founder-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.founder-title-row h2 {
+  margin-bottom: 0;
 }
 
 .founder-copy h2,
@@ -962,7 +970,6 @@ textarea {
   }
 
   .split,
-  .founder-card,
   .government-section,
   .contact {
     grid-template-columns: 1fr;
@@ -1036,6 +1043,11 @@ textarea {
 
   .founder-card {
     padding: 16px;
+  }
+
+  .founder-title-row {
+    align-items: flex-start;
+    gap: 14px;
   }
 
   .founder-image img {
