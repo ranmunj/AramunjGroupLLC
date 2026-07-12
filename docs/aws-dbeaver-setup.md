@@ -37,24 +37,27 @@ Port: 5432
 Database name: aramunj
 Username: aramunj_app
 Password: stored securely, never committed
-SSL mode: require
+SSL mode: verify-full
+SSL root certificate: global-bundle.pem
 ```
 
 The app connection string format is:
 
 ```text
-postgresql://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=require
+postgresql://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=verify-full
 ```
 
 Example placeholder:
 
 ```text
-postgresql://aramunj_app:CHANGE_ME@aramunj-db.xxxxxx.us-west-2.rds.amazonaws.com:5432/aramunj?sslmode=require
+postgresql://aramunj_app:CHANGE_ME@aramunj-db.xxxxxx.us-west-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
 ```
 
 ## Connect Render To AWS RDS
 
-In Render, open the `AramunjGroupLLC` web service:
+In Render, open the `AramunjGroupLLC` web service. The repo includes the public
+AWS RDS CA bundle at `global-bundle.pem`, and the app automatically sets
+`PGSSLROOTCERT` to that file when it exists.
 
 1. Go to `Environment`.
 2. Set `DATABASE_URL` to the AWS RDS PostgreSQL connection string.
@@ -82,7 +85,7 @@ From the project folder:
 
 ```powershell
 $env:REQUIRE_POSTGRES="true"
-$env:DATABASE_URL="postgresql://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=require"
+$env:DATABASE_URL="postgresql://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=verify-full"
 python server.py
 ```
 
@@ -109,9 +112,17 @@ Password: PASSWORD
 ```
 
 4. Open the `SSL` tab.
-5. Set SSL mode to `require`.
-6. Click `Test Connection`.
-7. Save.
+5. Set SSL mode to `verify-full`.
+6. Set Root Certificate / CA Certificate to this file:
+
+```text
+C:\Users\ranmu\Documents\Codex\2026-06-28\i-need-a-website-desigened-for\work\AramunjGroupLLC\global-bundle.pem
+```
+
+If DBeaver asks for separate client certificate or private key files, leave
+those blank. RDS only needs the CA/root certificate for server verification.
+7. Click `Test Connection`.
+8. Save.
 
 Useful DBeaver SQL checks:
 

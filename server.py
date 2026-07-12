@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 LOCAL_JSONL = DATA_DIR / "leads.jsonl"
+RDS_CA_BUNDLE = ROOT / "global-bundle.pem"
 DATABASE_ENV_KEYS = (
     "DATABASE_URL",
     "RENDER_DATABASE_URL",
@@ -92,10 +93,17 @@ def postgres_configured() -> bool:
     return not any(part in database_url for part in placeholder_parts)
 
 
+def configure_postgres_ssl() -> None:
+    if RDS_CA_BUNDLE.exists() and not os.environ.get("PGSSLROOTCERT"):
+        os.environ["PGSSLROOTCERT"] = str(RDS_CA_BUNDLE)
+
+
 def save_to_postgres(lead: dict) -> bool:
     database_url = get_database_url()
     if not postgres_configured():
         return False
+
+    configure_postgres_ssl()
 
     try:
         import psycopg

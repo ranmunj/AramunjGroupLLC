@@ -15,7 +15,7 @@ Open `http://127.0.0.1:5179`.
 Set `DATABASE_URL` before starting the server. The API creates the `aramunj_leads` table from `schema.sql` and stores contact form submissions in Postgres.
 
 ```powershell
-$env:DATABASE_URL="postgresql://user:password@host:5432/database"
+$env:DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=verify-full"
 python server.py
 ```
 
@@ -25,7 +25,7 @@ To force local development to use Postgres instead of the local JSONL fallback:
 
 ```powershell
 $env:REQUIRE_POSTGRES="true"
-$env:DATABASE_URL="postgresql://user:password@host:5432/database"
+$env:DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=verify-full"
 python server.py
 ```
 
@@ -43,11 +43,13 @@ Branch: AramunjgroupLLc
 Add the Render Postgres connection string as an environment variable:
 
 ```text
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://...?sslmode=verify-full
 REQUIRE_POSTGRES=true
 ```
 
-Use the real Render Postgres Internal Database URL, not placeholder text.
+Use the real Postgres URL, not placeholder text. For AWS RDS PostgreSQL, the
+repo includes `global-bundle.pem` and the app automatically uses it as the RDS
+root certificate.
 
 To route contact inquiries to email while still saving them to Postgres, add SMTP
 settings in Render:
