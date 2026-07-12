@@ -65,6 +65,24 @@ SMTP_FROM=no-reply@aramunj.com
 
 Use `SMTP_SSL=true` only if your provider requires SSL on port `465`.
 
+For Google Workspace / Gmail, use an app password instead of your normal Gmail
+password:
+
+```text
+INQUIRY_RECIPIENT=ranga@aramunj.com, info@aramunj.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=info@aramunj.com
+SMTP_PASSWORD=your_16_character_google_app_password
+SMTP_FROM=info@aramunj.com
+SMTP_SSL=false
+```
+
+The Gmail account must have 2-Step Verification enabled before Google lets you
+create an app password. If Gmail returns `535 BadCredentials`, replace
+`SMTP_PASSWORD` in Render with a fresh app password, then choose
+`Save, rebuild, and deploy`.
+
 ## AWS RDS + DBeaver
 
 For AWS PostgreSQL and DBeaver setup, use:

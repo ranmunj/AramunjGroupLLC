@@ -367,7 +367,8 @@ class AramunjHandler(SimpleHTTPRequestHandler):
             try:
                 email_status = send_inquiry_email(lead)
             except Exception as error:
-                email_status = f"failed: {error}"
+                print(f"Inquiry email delivery failed: {error}", flush=True)
+                email_status = "failed"
             json_response(
                 self,
                 HTTPStatus.CREATED,
