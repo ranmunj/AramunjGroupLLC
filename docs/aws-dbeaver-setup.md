@@ -6,8 +6,15 @@ PostgreSQL database and let you inspect the same database from DBeaver.
 ## Current Status
 
 - The Aramunj website already supports PostgreSQL through `DATABASE_URL`.
-- AWS CLI is installed on this workstation and is configured for `us-west-2`.
-- The current AWS IAM user can authenticate, but it cannot list RDS instances yet.
+- AWS CLI is installed on this workstation.
+- The provided AWS RDS Proxy ARN is:
+
+```text
+arn:aws:rds:us-east-2:574031549478:db-proxy:prx-0ce7c62eb4dd954c1
+```
+
+- The current AWS IAM user can authenticate, but it cannot list RDS instances,
+  RDS proxies, or RDS proxy endpoints yet.
 - DBeaver is not available on the command-line PATH, so open it from the Windows
   Start menu if it is already installed.
 
@@ -24,15 +31,23 @@ AWS RDS PostgreSQL database
 DBeaver desktop connection
 ```
 
-Use one AWS RDS PostgreSQL database for Aramunj inquiries. Render and DBeaver
-should connect to the same endpoint, database name, username, and password.
+Use one AWS RDS PostgreSQL database for Aramunj inquiries. If you connect
+through RDS Proxy, Render and DBeaver need the proxy endpoint hostname, database
+name, username, and password.
+
+Important: an RDS Proxy ARN is not a database host. You still need the proxy
+endpoint hostname, which usually looks like this:
+
+```text
+proxy-name.proxy-xxxxxxxxxxxx.us-east-2.rds.amazonaws.com
+```
 
 ## Information You Need From AWS
 
-Collect these values from the AWS RDS database page:
+Collect these values from AWS:
 
 ```text
-RDS endpoint: your-db-name.xxxxxx.us-west-2.rds.amazonaws.com
+RDS or RDS Proxy endpoint: your-endpoint.xxxxxx.us-east-2.rds.amazonaws.com
 Port: 5432
 Database name: aramunj
 Username: aramunj_app
@@ -44,14 +59,52 @@ SSL root certificate: global-bundle.pem
 The app connection string format is:
 
 ```text
-postgresql://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=verify-full
+postgresql://USERNAME:PASSWORD@RDS_OR_PROXY_ENDPOINT:5432/DATABASE_NAME?sslmode=verify-full
 ```
 
 Example placeholder:
 
 ```text
-postgresql://aramunj_app:CHANGE_ME@aramunj-db.xxxxxx.us-west-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
+postgresql://aramunj_app:CHANGE_ME@proxy-name.proxy-xxxxxxxxxxxx.us-east-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
 ```
+
+## Resolve The RDS Proxy Endpoint
+
+The proxy ARN you provided is:
+
+```text
+arn:aws:rds:us-east-2:574031549478:db-proxy:prx-0ce7c62eb4dd954c1
+```
+
+Once the AWS IAM user has read permissions, use:
+
+```powershell
+aws rds describe-db-proxies `
+  --region us-east-2 `
+  --query "DBProxies[?DBProxyArn=='arn:aws:rds:us-east-2:574031549478:db-proxy:prx-0ce7c62eb4dd954c1'].{Name:DBProxyName,Endpoint:Endpoint,Status:Status,RequireTLS:RequireTLS,EngineFamily:EngineFamily}" `
+  --output table
+
+aws rds describe-db-proxy-endpoints `
+  --region us-east-2 `
+  --query "DBProxyEndpoints[].{Name:DBProxyEndpointName,Endpoint:Endpoint,Status:Status,TargetRole:TargetRole,VpcId:VpcId}" `
+  --output table
+```
+
+Use the returned `Endpoint` value as the hostname in DBeaver and in
+`DATABASE_URL`.
+
+## RDS Proxy Network Reality Check
+
+RDS Proxy endpoints are normally private inside an AWS VPC. That means:
+
+- DBeaver on your laptop can connect only if you are on the VPC network path,
+  such as VPN, Direct Connect, bastion host, or SSM port forwarding.
+- Render usually cannot connect directly to a private RDS Proxy endpoint.
+- If the website must stay on Render, the simpler connection is often the public
+  RDS database endpoint with a locked-down security group and SSL.
+- If you want to use RDS Proxy cleanly, the app should usually run inside AWS,
+  for example on App Runner with VPC connector, ECS/Fargate, EC2, Elastic
+  Beanstalk, or Lambda in the same VPC.
 
 ## Connect Render To AWS RDS
 
@@ -85,7 +138,7 @@ From the project folder:
 
 ```powershell
 $env:REQUIRE_POSTGRES="true"
-$env:DATABASE_URL="postgresql://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=verify-full"
+$env:DATABASE_URL="postgresql://USERNAME:PASSWORD@RDS_OR_PROXY_ENDPOINT:5432/DATABASE_NAME?sslmode=verify-full"
 python server.py
 ```
 
@@ -104,7 +157,7 @@ In DBeaver:
 3. Enter:
 
 ```text
-Host: RDS_ENDPOINT
+Host: RDS_OR_PROXY_ENDPOINT
 Port: 5432
 Database: DATABASE_NAME
 Username: USERNAME
@@ -155,7 +208,8 @@ controlled bastion/SSM tunnel.
 ## AWS IAM Permissions Needed For Automation
 
 The current AWS CLI user cannot inspect RDS. To let Codex discover existing RDS
-databases and help finish the setup automatically, attach a policy with at least:
+databases, proxies, proxy endpoints, and network settings, attach a policy with
+at least:
 
 ```json
 {
@@ -166,6 +220,9 @@ databases and help finish the setup automatically, attach a policy with at least
       "Action": [
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
+        "rds:DescribeDBProxies",
+        "rds:DescribeDBProxyEndpoints",
+        "rds:DescribeDBProxyTargets",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeVpcs",
         "ec2:DescribeSubnets"
