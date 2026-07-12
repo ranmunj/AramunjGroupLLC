@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import pathlib
@@ -9,7 +10,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
@@ -23,6 +24,8 @@ DATABASE_ENV_KEYS = (
     "POSTGRESQL",
     "postgresql",
 )
+SECRET_DATABASE_URL_CACHE: str | None = None
+SECRET_DATABASE_ERROR: str | None = None
 
 
 def truthy(value: str | None) -> bool:
@@ -70,6 +73,9 @@ def get_database_config() -> tuple[str, str]:
         value = os.environ.get(key, "").strip()
         if value:
             return value, key
+    secret_url = get_secret_database_url()
+    if secret_url:
+        return secret_url, "RDS_SECRET_ARN"
     return "", ""
 
 
@@ -79,6 +85,89 @@ def get_database_url() -> str:
 
 def get_database_env_key() -> str:
     return get_database_config()[1]
+
+
+def get_aws_region() -> str:
+    return (
+        os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION")
+        or "us-east-2"
+    )
+
+
+def first_value(source: dict, *keys: str) -> str:
+    for key in keys:
+        value = source.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
+def build_postgres_url_from_secret(secret: dict) -> str:
+    username = os.environ.get("RDS_USERNAME") or first_value(secret, "username", "user")
+    password = os.environ.get("RDS_PASSWORD") or first_value(secret, "password")
+    host = (
+        os.environ.get("RDS_PROXY_ENDPOINT")
+        or os.environ.get("RDS_HOST")
+        or first_value(secret, "host", "hostname")
+    )
+    port = os.environ.get("RDS_PORT") or first_value(secret, "port") or "5432"
+    database = (
+        os.environ.get("RDS_DATABASE")
+        or os.environ.get("RDS_DB_NAME")
+        or first_value(secret, "dbname", "database", "dbName")
+        or "postgres"
+    )
+    ssl_mode = os.environ.get("RDS_SSL_MODE") or "verify-full"
+
+    missing = [
+        name
+        for name, value in (
+            ("username", username),
+            ("password", password),
+            ("host", host),
+        )
+        if not value
+    ]
+    if missing:
+        raise ValueError(f"RDS secret is missing required fields: {', '.join(missing)}")
+
+    return (
+        "postgresql://"
+        f"{quote(str(username), safe='')}:{quote(str(password), safe='')}"
+        f"@{host}:{port}/{quote(str(database), safe='')}"
+        f"?sslmode={quote(str(ssl_mode), safe='')}"
+    )
+
+
+def get_secret_database_url() -> str:
+    global SECRET_DATABASE_URL_CACHE, SECRET_DATABASE_ERROR
+
+    if SECRET_DATABASE_URL_CACHE is not None:
+        return SECRET_DATABASE_URL_CACHE
+
+    secret_arn = os.environ.get("RDS_SECRET_ARN", "").strip()
+    if not secret_arn:
+        return ""
+
+    try:
+        import boto3
+
+        client = boto3.client("secretsmanager", region_name=get_aws_region())
+        response = client.get_secret_value(SecretId=secret_arn)
+        secret_payload = response.get("SecretString")
+        if not secret_payload and response.get("SecretBinary"):
+            secret_payload = base64.b64decode(response["SecretBinary"]).decode("utf-8")
+        if not secret_payload:
+            raise ValueError("RDS secret did not include SecretString or SecretBinary.")
+        SECRET_DATABASE_URL_CACHE = build_postgres_url_from_secret(json.loads(secret_payload))
+        SECRET_DATABASE_ERROR = None
+        return SECRET_DATABASE_URL_CACHE
+    except Exception as error:
+        SECRET_DATABASE_URL_CACHE = ""
+        SECRET_DATABASE_ERROR = error.__class__.__name__
+        print(f"Unable to load RDS secret from AWS Secrets Manager: {error}", flush=True)
+        return ""
 
 
 def postgres_required() -> bool:

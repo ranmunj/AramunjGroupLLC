@@ -13,8 +13,14 @@ PostgreSQL database and let you inspect the same database from DBeaver.
 arn:aws:rds:us-east-2:574031549478:db-proxy:prx-0ce7c62eb4dd954c1
 ```
 
+- The provided AWS Secrets Manager ARN is:
+
+```text
+arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
+```
+
 - The current AWS IAM user can authenticate, but it cannot list RDS instances,
-  RDS proxies, or RDS proxy endpoints yet.
+  RDS proxies, RDS proxy endpoints, or read the database secret yet.
 - DBeaver is not available on the command-line PATH, so open it from the Windows
   Start menu if it is already installed.
 
@@ -56,6 +62,10 @@ SSL mode: verify-full
 SSL root certificate: global-bundle.pem
 ```
 
+The Secrets Manager secret should contain the database username and password.
+DBeaver cannot connect with a secret ARN directly; it needs the resolved
+username/password and a host endpoint.
+
 The app connection string format is:
 
 ```text
@@ -93,6 +103,30 @@ aws rds describe-db-proxy-endpoints `
 Use the returned `Endpoint` value as the hostname in DBeaver and in
 `DATABASE_URL`.
 
+## Resolve The Database Secret
+
+The secret ARN you provided is:
+
+```text
+arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
+```
+
+Once the AWS IAM user has read permission, use this to confirm the secret keys
+without printing the password:
+
+```powershell
+$secretJson = aws secretsmanager get-secret-value `
+  --region us-east-2 `
+  --secret-id "arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S" `
+  --query SecretString `
+  --output text
+
+$secret = $secretJson | ConvertFrom-Json
+$secret | Select-Object username, engine, host, port, dbname
+```
+
+Do not print or commit `$secret.password`.
+
 ## RDS Proxy Network Reality Check
 
 RDS Proxy endpoints are normally private inside an AWS VPC. That means:
@@ -111,6 +145,8 @@ RDS Proxy endpoints are normally private inside an AWS VPC. That means:
 In Render, open the `AramunjGroupLLC` web service. The repo includes the public
 AWS RDS CA bundle at `global-bundle.pem`, and the app automatically sets
 `PGSSLROOTCERT` to that file when it exists.
+
+### Option A: Direct Database URL
 
 1. Go to `Environment`.
 2. Set `DATABASE_URL` to the AWS RDS PostgreSQL connection string.
@@ -131,6 +167,39 @@ Expected:
   "postgresEnvKey": "DATABASE_URL"
 }
 ```
+
+### Option B: AWS Secrets Manager
+
+Use this when you do not want to paste the database password into Render.
+
+1. Go to `Environment`.
+2. Add:
+
+```text
+REQUIRE_POSTGRES=true
+AWS_REGION=us-east-2
+RDS_SECRET_ARN=arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
+RDS_PROXY_ENDPOINT=PROXY_ENDPOINT_FROM_AWS
+RDS_DATABASE=aramunj
+RDS_SSL_MODE=verify-full
+AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
+```
+
+3. Give that AWS key permission to read the secret and describe the RDS proxy.
+4. Save, rebuild, and deploy.
+5. Verify `/api/health` shows:
+
+```json
+{
+  "postgresConfigured": true,
+  "postgresRequired": true,
+  "postgresEnvKey": "RDS_SECRET_ARN"
+}
+```
+
+If you set `DATABASE_URL`, the app uses it first. If `DATABASE_URL` is empty,
+the app tries `RDS_SECRET_ARN`.
 
 ## Connect Local Development To AWS RDS
 
@@ -223,6 +292,8 @@ at least:
         "rds:DescribeDBProxies",
         "rds:DescribeDBProxyEndpoints",
         "rds:DescribeDBProxyTargets",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeVpcs",
         "ec2:DescribeSubnets"
@@ -232,6 +303,15 @@ at least:
   ]
 }
 ```
+
+The repo includes the ready-to-attach policy template:
+
+```text
+docs/aws-iam-rds-secret-read-policy.json
+```
+
+If the secret uses a customer-managed KMS key, the IAM user may also need
+`kms:Decrypt` for that key.
 
 If you want Codex to create or modify AWS resources, approve that separately
 because RDS can create monthly AWS costs.
