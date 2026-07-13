@@ -7,6 +7,12 @@ PostgreSQL database and let you inspect the same database from DBeaver.
 
 - The Aramunj website already supports PostgreSQL through `DATABASE_URL`.
 - AWS CLI is installed on this workstation.
+- The target AWS RDS DB instance for Aramunj inquiries is:
+
+```text
+aramunj-postgres
+```
+
 - The provided AWS RDS Proxy ARN is:
 
 ```text
@@ -19,8 +25,9 @@ arn:aws:rds:us-east-2:574031549478:db-proxy:prx-0ce7c62eb4dd954c1
 arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
 ```
 
-- The current AWS IAM user can authenticate, but it cannot list RDS instances,
-  RDS proxies, RDS proxy endpoints, or read the database secret yet.
+- The current AWS IAM user can authenticate, but it cannot inspect
+  `aramunj-postgres`, list RDS proxies, list RDS proxy endpoints, or read the
+  database secret yet.
 - DBeaver is not available on the command-line PATH, so open it from the Windows
   Start menu if it is already installed.
 
@@ -37,12 +44,13 @@ AWS RDS PostgreSQL database
 DBeaver desktop connection
 ```
 
-Use one AWS RDS PostgreSQL database for Aramunj inquiries. If you connect
-through RDS Proxy, Render and DBeaver need the proxy endpoint hostname, database
-name, username, and password.
+Use the AWS RDS PostgreSQL instance `aramunj-postgres` for Aramunj inquiries.
+Render and DBeaver need the database endpoint hostname, database name, username,
+and password.
 
-Important: an RDS Proxy ARN is not a database host. You still need the proxy
-endpoint hostname, which usually looks like this:
+RDS Proxy is optional. Important: an RDS Proxy ARN is not a database host. If
+you connect through the proxy, you still need the proxy endpoint hostname, which
+usually looks like this:
 
 ```text
 proxy-name.proxy-xxxxxxxxxxxx.us-east-2.rds.amazonaws.com
@@ -75,10 +83,25 @@ postgresql://USERNAME:PASSWORD@RDS_OR_PROXY_ENDPOINT:5432/DATABASE_NAME?sslmode=
 Example placeholder:
 
 ```text
-postgresql://aramunj_app:CHANGE_ME@proxy-name.proxy-xxxxxxxxxxxx.us-east-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
+postgresql://aramunj_app:CHANGE_ME@aramunj-postgres.xxxxxxxxxxxx.us-east-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
 ```
 
-## Resolve The RDS Proxy Endpoint
+## Resolve The aramunj-postgres Endpoint
+
+Once the AWS IAM user has read permissions, use:
+
+```powershell
+aws rds describe-db-instances `
+  --region us-east-2 `
+  --db-instance-identifier aramunj-postgres `
+  --query "DBInstances[0].{DBInstanceIdentifier:DBInstanceIdentifier,Endpoint:Endpoint.Address,Port:Endpoint.Port,DBName:DBName,Engine:Engine,Status:DBInstanceStatus,PubliclyAccessible:PubliclyAccessible,VpcSecurityGroups:VpcSecurityGroups[*].VpcSecurityGroupId}" `
+  --output table
+```
+
+Use the returned `Endpoint` value as the hostname in Render, DBeaver, and
+local development.
+
+## Optional: Resolve The RDS Proxy Endpoint
 
 The proxy ARN you provided is:
 
@@ -100,8 +123,9 @@ aws rds describe-db-proxy-endpoints `
   --output table
 ```
 
-Use the returned `Endpoint` value as the hostname in DBeaver and in
-`DATABASE_URL`.
+Use the returned proxy `Endpoint` value as the hostname only if you intentionally
+want Render and DBeaver to connect through RDS Proxy instead of directly to
+`aramunj-postgres`.
 
 ## Resolve The Database Secret
 
@@ -179,14 +203,15 @@ Use this when you do not want to paste the database password into Render.
 REQUIRE_POSTGRES=true
 AWS_REGION=us-east-2
 RDS_SECRET_ARN=arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
-RDS_PROXY_ENDPOINT=PROXY_ENDPOINT_FROM_AWS
+RDS_HOST=ARAMUNJ_POSTGRES_ENDPOINT_FROM_AWS
 RDS_DATABASE=aramunj
 RDS_SSL_MODE=verify-full
 AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
 ```
 
-3. Give that AWS key permission to read the secret and describe the RDS proxy.
+3. Give that AWS key permission to read the secret and describe
+   `aramunj-postgres`.
 4. Save, rebuild, and deploy.
 5. Verify `/api/health` shows:
 
@@ -276,9 +301,9 @@ controlled bastion/SSM tunnel.
 
 ## AWS IAM Permissions Needed For Automation
 
-The current AWS CLI user cannot inspect RDS. To let Codex discover existing RDS
-databases, proxies, proxy endpoints, and network settings, attach a policy with
-at least:
+The current AWS CLI user cannot inspect `aramunj-postgres`. To let Codex
+discover the Aramunj RDS endpoint, secret, and network settings, attach a policy
+with at least:
 
 ```json
 {
