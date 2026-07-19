@@ -17,6 +17,8 @@ ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 LOCAL_JSONL = DATA_DIR / "leads.jsonl"
 RDS_CA_BUNDLE = ROOT / "global-bundle.pem"
+ARAMUNJ_RDS_HOST = "aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com"
+ARAMUNJ_RDS_DATABASE = "aramunj"
 DATABASE_ENV_KEYS = (
     "DATABASE_URL",
     "RENDER_DATABASE_URL",
@@ -108,7 +110,7 @@ def get_database_config() -> tuple[str, str]:
     for key in DATABASE_ENV_KEYS:
         value = os.environ.get(key, "").strip()
         if value:
-            return value, key
+            return normalize_database_url(value), key
 
     secret_url = get_secret_database_url()
     if secret_url:
@@ -140,6 +142,45 @@ def first_value(source: dict, *keys: str) -> str:
     return ""
 
 
+def normalize_database_url(database_url: str) -> str:
+    if ARAMUNJ_RDS_HOST not in database_url:
+        return database_url
+
+    scheme = ""
+    for candidate in ("postgresql://", "postgres://"):
+        if database_url.startswith(candidate):
+            scheme = candidate
+            break
+    if not scheme:
+        return database_url
+
+    delimiter = f"@{ARAMUNJ_RDS_HOST}"
+    delimiter_index = database_url.rfind(delimiter)
+    credentials = database_url[len(scheme) : delimiter_index]
+    if delimiter_index <= len(scheme) or ":" not in credentials:
+        return database_url
+
+    username, password = credentials.split(":", 1)
+    remainder = database_url[delimiter_index + 1 :]
+    host_and_path = remainder
+    query = ""
+    if "?" in host_and_path:
+        host_and_path, query = host_and_path.split("?", 1)
+
+    host_port, _, path = host_and_path.partition("/")
+    if ":" not in host_port:
+        host_port = f"{ARAMUNJ_RDS_HOST}:5432"
+    database = path.strip("/") or ARAMUNJ_RDS_DATABASE
+    query = query or "sslmode=verify-full"
+
+    return (
+        "postgresql://"
+        f"{quote(username, safe='')}:{quote(password, safe='')}"
+        f"@{host_port}/{quote(database, safe='')}"
+        f"?{query}"
+    )
+
+
 def build_postgres_url_from_secret(secret: dict) -> str:
     username = (
         os.environ.get("RDS_USERNAME")
@@ -149,16 +190,17 @@ def build_postgres_url_from_secret(secret: dict) -> str:
     )
     password = os.environ.get("RDS_PASSWORD") or first_value(secret, "password")
     host = (
-        os.environ.get("RDS_PROXY_ENDPOINT")
-        or os.environ.get("RDS_HOST")
+        os.environ.get("RDS_HOST")
+        or os.environ.get("RDS_PROXY_ENDPOINT")
         or first_value(secret, "host", "hostname")
+        or ARAMUNJ_RDS_HOST
     )
     port = os.environ.get("RDS_PORT") or first_value(secret, "port") or "5432"
     database = (
         os.environ.get("RDS_DATABASE")
         or os.environ.get("RDS_DB_NAME")
         or first_value(secret, "dbname", "database", "dbName")
-        or "postgres"
+        or ARAMUNJ_RDS_DATABASE
     )
     ssl_mode = os.environ.get("RDS_SSL_MODE") or "verify-full"
 
@@ -183,11 +225,7 @@ def build_postgres_url_from_secret(secret: dict) -> str:
 
 
 def get_structured_database_url() -> str:
-    if (
-        not os.environ.get("RDS_HOST")
-        or not os.environ.get("RDS_PASSWORD")
-        or not (os.environ.get("RDS_DATABASE") or os.environ.get("RDS_DB_NAME"))
-    ):
+    if not os.environ.get("RDS_PASSWORD"):
         return ""
     return build_postgres_url_from_secret({})
 
@@ -533,7 +571,12 @@ class AramunjHandler(SimpleHTTPRequestHandler):
         except ValueError as error:
             json_response(self, HTTPStatus.BAD_REQUEST, {"error": str(error)})
         except Exception as error:
-            json_response(self, HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(error)})
+            print(f"Inquiry submission failed: {error}", flush=True)
+            json_response(
+                self,
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": "We could not submit your inquiry. Please try again shortly."},
+            )
 
     def get_client_ip(self) -> str:
         forwarded_for = self.headers.get("X-Forwarded-For", "")
