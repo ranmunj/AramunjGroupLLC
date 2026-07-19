@@ -12,7 +12,7 @@ from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import urlopen
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
@@ -162,6 +162,8 @@ def normalize_database_url(database_url: str) -> str:
         return database_url
 
     username, password = credentials.split(":", 1)
+    username = unquote(username)
+    password = unquote(password)
     remainder = database_url[delimiter_index + 1 :]
     host_and_path = remainder
     query = ""
@@ -171,7 +173,7 @@ def normalize_database_url(database_url: str) -> str:
     host_port, _, path = host_and_path.partition("/")
     if ":" not in host_port:
         host_port = f"{ARAMUNJ_RDS_HOST}:5432"
-    database = path.strip("/") or ARAMUNJ_RDS_DATABASE
+    database = unquote(path.strip("/")) or ARAMUNJ_RDS_DATABASE
     query = query or "sslmode=verify-full"
 
     return (
