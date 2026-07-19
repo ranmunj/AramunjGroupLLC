@@ -25,9 +25,17 @@ arn:aws:rds:us-east-2:574031549478:db-proxy:prx-0ce7c62eb4dd954c1
 arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
 ```
 
-- The current AWS IAM user can authenticate, but it cannot inspect
-  `aramunj-postgres`, list RDS proxies, list RDS proxy endpoints, or read the
-  database secret yet.
+- The `Ranganai` AWS profile can inspect `aramunj-postgres`, the `aramunj` RDS
+  Proxy, and the database secret metadata.
+- `aramunj-postgres` is currently private:
+
+```text
+PubliclyAccessible: false
+Private IP observed from DNS: 172.31.0.223
+```
+
+- The `aramunj` RDS Proxy target for `aramunj-postgres` is available after
+  adding the security group self-reference rule on PostgreSQL port `5432`.
 - DBeaver is not available on the command-line PATH, so open it from the Windows
   Start menu if it is already installed.
 
@@ -61,10 +69,11 @@ proxy-name.proxy-xxxxxxxxxxxx.us-east-2.rds.amazonaws.com
 Collect these values from AWS:
 
 ```text
-RDS or RDS Proxy endpoint: your-endpoint.xxxxxx.us-east-2.rds.amazonaws.com
+RDS endpoint: aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
+RDS Proxy endpoint: aramunj.proxy-c9aewamuqc3f.us-east-2.rds.amazonaws.com
 Port: 5432
 Database name: aramunj
-Username: aramunj_app
+Username: postgres
 Password: stored securely, never committed
 SSL mode: verify-full
 SSL root certificate: global-bundle.pem
@@ -83,7 +92,7 @@ postgresql://USERNAME:PASSWORD@RDS_OR_PROXY_ENDPOINT:5432/DATABASE_NAME?sslmode=
 Example placeholder:
 
 ```text
-postgresql://aramunj_app:CHANGE_ME@aramunj-postgres.xxxxxxxxxxxx.us-east-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
+postgresql://postgres:CHANGE_ME@aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com:5432/aramunj?sslmode=verify-full
 ```
 
 ## Resolve The aramunj-postgres Endpoint
@@ -98,8 +107,14 @@ aws rds describe-db-instances `
   --output table
 ```
 
-Use the returned `Endpoint` value as the hostname in Render, DBeaver, and
-local development.
+The current endpoint is:
+
+```text
+aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
+```
+
+Use the returned `Endpoint` value as the hostname in Render, DBeaver, and local
+development only when your client has a network path into the AWS VPC.
 
 ## Optional: Resolve The RDS Proxy Endpoint
 
@@ -126,6 +141,16 @@ aws rds describe-db-proxy-endpoints `
 Use the returned proxy `Endpoint` value as the hostname only if you intentionally
 want Render and DBeaver to connect through RDS Proxy instead of directly to
 `aramunj-postgres`.
+
+The current proxy endpoint is:
+
+```text
+aramunj.proxy-c9aewamuqc3f.us-east-2.rds.amazonaws.com
+```
+
+The proxy target is registered to `aramunj-postgres`. A security group
+self-reference rule on PostgreSQL port `5432` is required so the proxy can reach
+the database.
 
 ## Resolve The Database Secret
 
@@ -157,12 +182,16 @@ RDS Proxy endpoints are normally private inside an AWS VPC. That means:
 
 - DBeaver on your laptop can connect only if you are on the VPC network path,
   such as VPN, Direct Connect, bastion host, or SSM port forwarding.
-- Render usually cannot connect directly to a private RDS Proxy endpoint.
+- Render cannot connect directly to the current private RDS or private RDS Proxy
+  endpoint over the public internet.
 - If the website must stay on Render, the simpler connection is often the public
   RDS database endpoint with a locked-down security group and SSL.
 - If you want to use RDS Proxy cleanly, the app should usually run inside AWS,
   for example on App Runner with VPC connector, ECS/Fargate, EC2, Elastic
   Beanstalk, or Lambda in the same VPC.
+- Render Private Link is also possible on a Pro workspace or higher, but it
+  requires an AWS VPC endpoint service/NLB setup and the Render service must be
+  in the same region as the private link.
 
 ## Connect Render To AWS RDS
 
@@ -203,7 +232,7 @@ Use this when you do not want to paste the database password into Render.
 REQUIRE_POSTGRES=true
 AWS_REGION=us-east-2
 RDS_SECRET_ARN=arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8164-a316849b2677-gzHB2S
-RDS_HOST=ARAMUNJ_POSTGRES_ENDPOINT_FROM_AWS
+RDS_HOST=aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
 RDS_DATABASE=aramunj
 RDS_SSL_MODE=verify-full
 AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
