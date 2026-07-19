@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hmac
 import json
 import os
 import pathlib
@@ -10,7 +11,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
@@ -66,6 +67,37 @@ def validate_lead(payload: dict) -> dict:
         "submitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "ip_address": "",
     }
+
+
+def get_admin_token() -> str:
+    return (
+        os.environ.get("ADMIN_TOKEN", "").strip()
+        or os.environ.get("INQUIRY_ADMIN_TOKEN", "").strip()
+    )
+
+
+def admin_authorized(handler: SimpleHTTPRequestHandler) -> bool:
+    expected = get_admin_token()
+    if not expected:
+        return False
+
+    supplied = ""
+    authorization = handler.headers.get("Authorization", "")
+    if authorization.lower().startswith("bearer "):
+        supplied = authorization[7:].strip()
+    if not supplied:
+        query = parse_qs(urlsplit(handler.path).query)
+        supplied = str(query.get("token", [""])[0]).strip()
+    return hmac.compare_digest(supplied, expected)
+
+
+def parse_limit(handler: SimpleHTTPRequestHandler) -> int:
+    query = parse_qs(urlsplit(handler.path).query)
+    try:
+        limit = int(str(query.get("limit", ["100"])[0]))
+    except ValueError:
+        limit = 100
+    return max(1, min(limit, 500))
 
 
 def get_database_config() -> tuple[str, str]:
@@ -242,6 +274,84 @@ def save_to_postgres(lead: dict) -> bool:
     return True
 
 
+def list_leads_from_postgres(limit: int) -> list[dict]:
+    database_url = get_database_url()
+    if not postgres_configured():
+        return []
+
+    configure_postgres_ssl()
+
+    try:
+        import psycopg
+    except ImportError:
+        return []
+
+    with psycopg.connect(database_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute((ROOT / "schema.sql").read_text(encoding="utf-8"))
+            cur.execute(
+                """
+                SELECT
+                  id, name, company, email, phone, organization, country,
+                  project_type, budget, interest, message, source, ip_address, created_at
+                FROM aramunj_leads
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+
+    leads = []
+    for row in rows:
+        created_at = row[13].isoformat() if hasattr(row[13], "isoformat") else str(row[13])
+        leads.append(
+            {
+                "id": row[0],
+                "name": row[1] or "",
+                "company": row[2] or "",
+                "email": row[3] or "",
+                "phone": row[4] or "",
+                "organization": row[5] or "",
+                "country": row[6] or "",
+                "project_type": row[7] or row[9] or "",
+                "budget": row[8] or "",
+                "interest": row[9] or "",
+                "message": row[10] or "",
+                "source": row[11] or "",
+                "ip_address": row[12] or "",
+                "created_at": created_at,
+            }
+        )
+    return leads
+
+
+def list_leads_locally(limit: int) -> list[dict]:
+    if not LOCAL_JSONL.exists():
+        return []
+
+    leads = []
+    lines = LOCAL_JSONL.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(reversed(lines[-limit:]), start=1):
+        try:
+            lead = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        lead.setdefault("id", f"local-{index}")
+        lead.setdefault("created_at", lead.get("submitted_at", ""))
+        leads.append(lead)
+    return leads
+
+
+def list_leads(limit: int) -> tuple[list[dict], str]:
+    if postgres_configured():
+        return list_leads_from_postgres(limit), "postgres"
+    if postgres_required():
+        raise RuntimeError("Postgres is required but no valid Postgres connection URL is configured.")
+    return list_leads_locally(limit), "local"
+
+
 def save_locally(lead: dict) -> None:
     DATA_DIR.mkdir(exist_ok=True)
     with LOCAL_JSONL.open("a", encoding="utf-8") as stream:
@@ -345,7 +455,8 @@ class AramunjHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self) -> None:
-        if self.path == "/api/health":
+        request_path = urlsplit(self.path).path
+        if request_path == "/api/health":
             json_response(
                 self,
                 HTTPStatus.OK,
@@ -358,6 +469,27 @@ class AramunjHandler(SimpleHTTPRequestHandler):
                     "service": "aramunj-group-llc",
                 },
             )
+            return
+        if request_path == "/api/leads":
+            if not get_admin_token():
+                json_response(
+                    self,
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"error": "Inquiry dashboard is not configured."},
+                )
+                return
+            if not admin_authorized(self):
+                json_response(self, HTTPStatus.UNAUTHORIZED, {"error": "Unauthorized"})
+                return
+            try:
+                leads, storage = list_leads(parse_limit(self))
+                json_response(
+                    self,
+                    HTTPStatus.OK,
+                    {"ok": True, "storage": storage, "count": len(leads), "leads": leads},
+                )
+            except Exception as error:
+                json_response(self, HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(error)})
             return
         super().do_GET()
 

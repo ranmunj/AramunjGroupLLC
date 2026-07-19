@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Aramunj Inquiries</title>
+    <link rel="icon" href="assets/aramunj-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="inquiries.css" />
+  </head>
+  <body>
+    <main class="dashboard-shell">
+      <section class="auth-panel" id="authPanel">
+        <div class="brand">
+          <img src="assets/aramunj-mark.svg" alt="" width="42" height="42" />
+          <span>
+            <strong>Aramunj</strong>
+            <small>Inquiries</small>
+          </span>
+        </div>
+        <form id="tokenForm" class="token-form">
+          <label for="adminToken">Admin token</label>
+          <div class="token-row">
+            <input id="adminToken" name="adminToken" type="password" autocomplete="current-password" required />
+            <button type="submit">Open</button>
+          </div>
+          <p id="authStatus" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="dashboard" id="dashboard" hidden>
+        <header class="dashboard-header">
+          <div class="brand">
+            <img src="assets/aramunj-mark.svg" alt="" width="42" height="42" />
+            <span>
+              <strong>Aramunj</strong>
+              <small>Inquiries</small>
+            </span>
+          </div>
+          <div class="header-actions">
+            <input id="searchInput" type="search" placeholder="Search inquiries" aria-label="Search inquiries" />
+            <button id="refreshButton" type="button">Refresh</button>
+            <button id="lockButton" type="button">Lock</button>
+          </div>
+        </header>
+
+        <section class="metric-grid" aria-label="Inquiry metrics">
+          <article>
+            <span>Total</span>
+            <strong id="totalCount">0</strong>
+          </article>
+          <article>
+            <span>Latest</span>
+            <strong id="latestDate">-</strong>
+          </article>
+          <article>
+            <span>Storage</span>
+            <strong id="storageType">-</strong>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <div class="lead-list" id="leadList" aria-label="Contact requests"></div>
+          <article class="lead-detail" id="leadDetail">
+            <p class="empty-state">Select an inquiry to view details.</p>
+          </article>
+        </section>
+
+        <p class="sync-status" id="syncStatus" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+    <script src="inquiries.js" defer></script>
+  </body>
+</html>

@@ -67,6 +67,23 @@ RDS_SSL_MODE=verify-full
 When `RDS_HOST`, `RDS_DATABASE`, and `RDS_PASSWORD` are set, the app uses those
 values before `DATABASE_URL`.
 
+## Inquiry Dashboard
+
+The private inquiry dashboard is available at:
+
+```text
+https://aramunj.com/inquiries.html
+```
+
+Add an admin token in Render:
+
+```text
+ADMIN_TOKEN=generate_a_long_random_value
+```
+
+The dashboard reads from the same `aramunj_leads` Postgres table used by the
+contact form. Keep `ADMIN_TOKEN` private and do not commit it.
+
 To route contact inquiries to email while still saving them to Postgres, add SMTP
 settings in Render:
 
