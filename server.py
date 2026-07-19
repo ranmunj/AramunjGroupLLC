@@ -272,6 +272,18 @@ def postgres_configured() -> bool:
     return not any(part in database_url for part in placeholder_parts)
 
 
+def get_database_target() -> dict:
+    database_url = get_database_url()
+    if not database_url:
+        return {"host": None, "database": None}
+
+    parsed = urlsplit(database_url)
+    return {
+        "host": parsed.hostname,
+        "database": parsed.path.strip("/") or None,
+    }
+
+
 def configure_postgres_ssl() -> None:
     if RDS_CA_BUNDLE.exists() and not os.environ.get("PGSSLROOTCERT"):
         os.environ["PGSSLROOTCERT"] = str(RDS_CA_BUNDLE)
@@ -503,6 +515,7 @@ class AramunjHandler(SimpleHTTPRequestHandler):
                     "postgresConfigured": postgres_configured(),
                     "postgresRequired": postgres_required(),
                     "postgresEnvKey": get_database_env_key() or None,
+                    "postgresTarget": get_database_target(),
                     "emailConfigured": smtp_configured(),
                     "service": "aramunj-group-llc",
                 },
