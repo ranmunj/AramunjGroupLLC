@@ -27,13 +27,17 @@ arn:aws:secretsmanager:us-east-2:574031549478:secret:rds!db-5e19b321-3b66-4c48-8
 
 - The `Ranganai` AWS profile can inspect `aramunj-postgres`, the `aramunj` RDS
   Proxy, and the database secret metadata.
-- `aramunj-postgres` is currently private:
+- `aramunj-postgres` is publicly accessible and reachable on PostgreSQL port
+  `5432` when the client IP/range is allowed by the security group:
 
 ```text
-PubliclyAccessible: false
-Private IP observed from DNS: 172.31.0.223
+PubliclyAccessible: true
+Endpoint: aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
 ```
 
+- The `aramunj` database exists on `aramunj-postgres`.
+- The `public.aramunj_leads` table exists and has been verified with an
+  app-level test insert.
 - The `aramunj` RDS Proxy target for `aramunj-postgres` is available after
   adding the security group self-reference rule on PostgreSQL port `5432`.
 - DBeaver is not available on the command-line PATH, so open it from the Windows
@@ -114,7 +118,7 @@ aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
 ```
 
 Use the returned `Endpoint` value as the hostname in Render, DBeaver, and local
-development only when your client has a network path into the AWS VPC.
+development.
 
 ## Optional: Resolve The RDS Proxy Endpoint
 
@@ -180,12 +184,11 @@ Do not print or commit `$secret.password`.
 
 RDS Proxy endpoints are normally private inside an AWS VPC. That means:
 
-- DBeaver on your laptop can connect only if you are on the VPC network path,
-  such as VPN, Direct Connect, bastion host, or SSM port forwarding.
-- Render cannot connect directly to the current private RDS or private RDS Proxy
-  endpoint over the public internet.
-- If the website must stay on Render, the simpler connection is often the public
-  RDS database endpoint with a locked-down security group and SSL.
+- DBeaver and Render should connect to the public RDS endpoint
+  `aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com` when using the
+  current Render-hosted website.
+- The RDS Proxy endpoint remains optional and is best used by apps running
+  inside the AWS VPC.
 - If you want to use RDS Proxy cleanly, the app should usually run inside AWS,
   for example on App Runner with VPC connector, ECS/Fargate, EC2, Elastic
   Beanstalk, or Lambda in the same VPC.
@@ -280,10 +283,10 @@ In DBeaver:
 3. Enter:
 
 ```text
-Host: RDS_OR_PROXY_ENDPOINT
+Host: aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
 Port: 5432
-Database: DATABASE_NAME
-Username: USERNAME
+Database: aramunj
+Username: postgres
 Password: PASSWORD
 ```
 
@@ -323,10 +326,18 @@ Source: your public IP address /32
 ```
 
 For Render to connect, the RDS database must also allow Render outbound traffic
-to reach the database. The simplest approach is a publicly accessible RDS
-instance with a strong password, SSL required, and very limited security group
-sources. A more locked-down production setup uses a private network/VPN or a
-controlled bastion/SSM tunnel.
+to reach the database. The current security group allows:
+
+```text
+24.253.94.200/32
+74.220.48.0/24
+sg-0e1469b6395ed4033 self-reference on port 5432
+```
+
+Before relying on Render in production, compare `74.220.48.0/24` with the
+outbound IP ranges shown in your Render service's `Connect` menu. Add any
+missing Render outbound ranges and keep `0.0.0.0/0` out of the database security
+group.
 
 ## AWS IAM Permissions Needed For Automation
 
