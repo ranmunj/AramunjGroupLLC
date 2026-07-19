@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.request import urlopen
 from urllib.parse import parse_qs, quote, urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -284,6 +285,45 @@ def get_database_target() -> dict:
     }
 
 
+def sanitize_error(error: Exception) -> str:
+    message = str(error)
+    database_url = get_database_url()
+    if database_url:
+        message = message.replace(database_url, "[redacted-database-url]")
+    return message[:260]
+
+
+def get_outbound_ip() -> str | None:
+    try:
+        with urlopen("https://api.ipify.org", timeout=5) as response:
+            return response.read().decode("utf-8").strip()
+    except Exception as error:
+        print(f"Unable to resolve outbound IP: {error}", flush=True)
+        return None
+
+
+def check_postgres_connection() -> dict:
+    if not postgres_configured():
+        return {"ok": False, "errorType": "NotConfigured"}
+
+    configure_postgres_ssl()
+
+    try:
+        import psycopg
+
+        with psycopg.connect(get_database_url(), connect_timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT current_database(), current_user")
+                database, user = cur.fetchone()
+        return {"ok": True, "database": database, "user": user}
+    except Exception as error:
+        return {
+            "ok": False,
+            "errorType": error.__class__.__name__,
+            "error": sanitize_error(error),
+        }
+
+
 def configure_postgres_ssl() -> None:
     if RDS_CA_BUNDLE.exists() and not os.environ.get("PGSSLROOTCERT"):
         os.environ["PGSSLROOTCERT"] = str(RDS_CA_BUNDLE)
@@ -507,18 +547,24 @@ class AramunjHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         request_path = urlsplit(self.path).path
         if request_path == "/api/health":
+            query = parse_qs(urlsplit(self.path).query)
+            include_db_check = str(query.get("check", [""])[0]).lower() == "db"
+            payload = {
+                "ok": True,
+                "postgresConfigured": postgres_configured(),
+                "postgresRequired": postgres_required(),
+                "postgresEnvKey": get_database_env_key() or None,
+                "postgresTarget": get_database_target(),
+                "emailConfigured": smtp_configured(),
+                "service": "aramunj-group-llc",
+            }
+            if include_db_check:
+                payload["outboundIp"] = get_outbound_ip()
+                payload["postgresCheck"] = check_postgres_connection()
             json_response(
                 self,
                 HTTPStatus.OK,
-                {
-                    "ok": True,
-                    "postgresConfigured": postgres_configured(),
-                    "postgresRequired": postgres_required(),
-                    "postgresEnvKey": get_database_env_key() or None,
-                    "postgresTarget": get_database_target(),
-                    "emailConfigured": smtp_configured(),
-                    "service": "aramunj-group-llc",
-                },
+                payload,
             )
             return
         if request_path == "/api/leads":
