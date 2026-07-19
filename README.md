@@ -51,6 +51,22 @@ Use the real Postgres URL, not placeholder text. For AWS RDS PostgreSQL, the
 repo includes `global-bundle.pem` and the app automatically uses it as the RDS
 root certificate.
 
+For AWS RDS, you can avoid URL-encoding password characters by using separate
+environment variables instead of `DATABASE_URL`:
+
+```text
+REQUIRE_POSTGRES=true
+RDS_HOST=aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
+RDS_PORT=5432
+RDS_DATABASE=aramunj
+RDS_USERNAME=postgres
+RDS_PASSWORD=your_raw_aws_database_password
+RDS_SSL_MODE=verify-full
+```
+
+When `RDS_HOST`, `RDS_DATABASE`, and `RDS_PASSWORD` are set, the app uses those
+values before `DATABASE_URL`.
+
 To route contact inquiries to email while still saving them to Postgres, add SMTP
 settings in Render:
 

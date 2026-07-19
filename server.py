@@ -69,10 +69,15 @@ def validate_lead(payload: dict) -> dict:
 
 
 def get_database_config() -> tuple[str, str]:
+    structured_url = get_structured_database_url()
+    if structured_url:
+        return structured_url, "RDS_ENV"
+
     for key in DATABASE_ENV_KEYS:
         value = os.environ.get(key, "").strip()
         if value:
             return value, key
+
     secret_url = get_secret_database_url()
     if secret_url:
         return secret_url, "RDS_SECRET_ARN"
@@ -104,7 +109,12 @@ def first_value(source: dict, *keys: str) -> str:
 
 
 def build_postgres_url_from_secret(secret: dict) -> str:
-    username = os.environ.get("RDS_USERNAME") or first_value(secret, "username", "user")
+    username = (
+        os.environ.get("RDS_USERNAME")
+        or os.environ.get("RDS_USER")
+        or first_value(secret, "username", "user")
+        or "postgres"
+    )
     password = os.environ.get("RDS_PASSWORD") or first_value(secret, "password")
     host = (
         os.environ.get("RDS_PROXY_ENDPOINT")
@@ -138,6 +148,16 @@ def build_postgres_url_from_secret(secret: dict) -> str:
         f"@{host}:{port}/{quote(str(database), safe='')}"
         f"?sslmode={quote(str(ssl_mode), safe='')}"
     )
+
+
+def get_structured_database_url() -> str:
+    if (
+        not os.environ.get("RDS_HOST")
+        or not os.environ.get("RDS_PASSWORD")
+        or not (os.environ.get("RDS_DATABASE") or os.environ.get("RDS_DB_NAME"))
+    ):
+        return ""
+    return build_postgres_url_from_secret({})
 
 
 def get_secret_database_url() -> str:

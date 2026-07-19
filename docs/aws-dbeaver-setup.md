@@ -224,6 +224,36 @@ Expected:
 }
 ```
 
+### Option A2: Separate RDS Variables
+
+Use this option if the database password contains characters like `@`, `#`,
+`/`, `?`, `&`, or `=` and you do not want to URL-encode the password.
+
+1. Go to `Environment`.
+2. Add:
+
+```text
+REQUIRE_POSTGRES=true
+RDS_HOST=aramunj-postgres.c9aewamuqc3f.us-east-2.rds.amazonaws.com
+RDS_PORT=5432
+RDS_DATABASE=aramunj
+RDS_USERNAME=postgres
+RDS_PASSWORD=YOUR_RAW_AWS_DATABASE_PASSWORD
+RDS_SSL_MODE=verify-full
+```
+
+3. Leave `DATABASE_URL` unset, or keep it only if you know it is correct.
+4. Save, rebuild, and deploy.
+5. Verify `/api/health` shows:
+
+```json
+{
+  "postgresConfigured": true,
+  "postgresRequired": true,
+  "postgresEnvKey": "RDS_ENV"
+}
+```
+
 ### Option B: AWS Secrets Manager
 
 Use this when you do not want to paste the database password into Render.
