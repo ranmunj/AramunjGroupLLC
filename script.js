@@ -4,6 +4,8 @@ const navToggle = document.querySelector(".nav-toggle");
 const header = document.querySelector("[data-elevate]");
 const navLinks = document.querySelectorAll("nav a");
 const revealItems = document.querySelectorAll(".reveal");
+const heroCanvas = document.querySelector(".hero-live-bg");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const updateHeader = () => {
   header?.classList.toggle("is-elevated", window.scrollY > 12);
@@ -41,6 +43,104 @@ if ("IntersectionObserver" in window) {
 } else {
   revealItems.forEach((item) => item.classList.add("is-visible"));
 }
+
+const initHeroNetwork = () => {
+  if (!heroCanvas) return;
+
+  const context = heroCanvas.getContext("2d");
+  if (!context) return;
+
+  let width = 0;
+  let height = 0;
+  let points = [];
+  let frameId = 0;
+  let lastTime = 0;
+
+  const resize = () => {
+    const rect = heroCanvas.getBoundingClientRect();
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    width = Math.max(1, rect.width);
+    height = Math.max(1, rect.height);
+    heroCanvas.width = Math.floor(width * ratio);
+    heroCanvas.height = Math.floor(height * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    const pointCount = Math.min(76, Math.max(36, Math.floor(width / 24)));
+    points = Array.from({ length: pointCount }, (_, index) => ({
+      x: (index / pointCount) * width + Math.random() * 42,
+      y: Math.random() * height,
+      speed: 0.018 + Math.random() * 0.036,
+      drift: 0.12 + Math.random() * 0.34,
+      size: Math.random() > 0.72 ? 2.5 : 1.6,
+      phase: Math.random() * Math.PI * 2,
+    }));
+  };
+
+  const draw = (time = 0) => {
+    const elapsed = Math.min(32, Math.max(0, time - lastTime) || 16);
+    lastTime = time;
+    context.clearRect(0, 0, width, height);
+
+    const scanX = ((time * 0.036) % (width + 220)) - 110;
+    const scan = context.createLinearGradient(scanX - 90, 0, scanX + 90, 0);
+    scan.addColorStop(0, "rgba(45, 132, 255, 0)");
+    scan.addColorStop(0.5, "rgba(115, 199, 255, 0.18)");
+    scan.addColorStop(1, "rgba(45, 132, 255, 0)");
+    context.fillStyle = scan;
+    context.fillRect(scanX - 90, 0, 180, height);
+
+    points.forEach((point) => {
+      if (!reduceMotion) {
+        point.y -= point.speed * elapsed;
+        point.x += Math.sin(time * 0.0007 + point.phase) * point.drift;
+        if (point.y < -18) {
+          point.y = height + Math.random() * 50;
+          point.x = Math.random() * width;
+        }
+      }
+    });
+
+    for (let i = 0; i < points.length; i += 1) {
+      for (let j = i + 1; j < points.length; j += 1) {
+        const a = points[i];
+        const b = points[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < 142) {
+          context.strokeStyle = `rgba(115, 199, 255, ${0.16 * (1 - distance / 142)})`;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(a.x, a.y);
+          context.lineTo(b.x, b.y);
+          context.stroke();
+        }
+      }
+    }
+
+    points.forEach((point) => {
+      context.fillStyle = "rgba(115, 199, 255, 0.72)";
+      context.fillRect(point.x - point.size / 2, point.y - point.size / 2, point.size, point.size);
+      context.fillStyle = "rgba(18, 105, 255, 0.18)";
+      context.fillRect(point.x - 5, point.y - 1, 10, 2);
+    });
+
+    if (!reduceMotion) {
+      frameId = window.requestAnimationFrame(draw);
+    }
+  };
+
+  resize();
+  draw();
+
+  window.addEventListener("resize", () => {
+    window.cancelAnimationFrame(frameId);
+    resize();
+    draw();
+  }, { passive: true });
+};
+
+initHeroNetwork();
 
 leadForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
