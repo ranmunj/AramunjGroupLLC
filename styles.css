@@ -8,8 +8,12 @@
   --blue-300: #7dd3fc;
   --cyan-500: #06b6d4;
   --cyan-300: #67e8f9;
+  --sky-200: #bae6fd;
+  --sky-100: #e0f2fe;
   --teal-400: #2dd4bf;
+  --mint-300: #86efac;
   --indigo-500: #6366f1;
+  --violet-400: #8b5cf6;
   --ink: #07111f;
   --text: #26374f;
   --muted: #64748b;
@@ -104,7 +108,9 @@ textarea:focus-visible {
   gap: 24px;
   padding: 14px clamp(18px, 4vw, 64px);
   color: var(--white);
-  background: rgba(2, 8, 23, 0.72);
+  background:
+    linear-gradient(90deg, rgba(2, 8, 23, 0.82), rgba(6, 20, 38, 0.74)),
+    rgba(2, 8, 23, 0.72);
   border-bottom: 1px solid rgba(125, 211, 252, 0.14);
   backdrop-filter: blur(22px);
   transition:
@@ -222,7 +228,7 @@ nav a:hover {
   overflow: hidden;
   color: var(--white);
   background:
-    linear-gradient(135deg, #020817 0%, #07182e 42%, #0b315b 72%, #123f66 100%);
+    linear-gradient(135deg, #020817 0%, #08213d 34%, #0d4f7d 72%, #0e7490 100%);
 }
 
 .hero-media {
@@ -246,7 +252,8 @@ nav a:hover {
   content: "";
   background:
     linear-gradient(90deg, rgba(2, 8, 23, 0.98), rgba(2, 8, 23, 0.84) 44%, rgba(2, 8, 23, 0.42)),
-    linear-gradient(160deg, rgba(37, 99, 235, 0.14), rgba(6, 182, 212, 0.12) 45%, transparent 72%),
+    linear-gradient(125deg, transparent 8%, rgba(14, 116, 144, 0.18) 9%, transparent 28%),
+    linear-gradient(160deg, rgba(59, 130, 246, 0.18), rgba(6, 182, 212, 0.16) 45%, rgba(139, 92, 246, 0.12) 72%),
     linear-gradient(180deg, rgba(2, 8, 23, 0.08), rgba(2, 8, 23, 0.9)),
     repeating-linear-gradient(
       90deg,
@@ -365,7 +372,7 @@ h3 {
   padding: 1px;
   overflow: hidden;
   background:
-    linear-gradient(135deg, rgba(125, 211, 252, 0.42), rgba(45, 212, 191, 0.18), rgba(255, 255, 255, 0.08));
+    linear-gradient(135deg, rgba(186, 230, 253, 0.52), rgba(45, 212, 191, 0.22), rgba(139, 92, 246, 0.16));
   border: 1px solid rgba(125, 211, 252, 0.24);
   border-radius: var(--radius);
   box-shadow: 0 32px 90px rgba(2, 8, 23, 0.36);
@@ -410,7 +417,9 @@ h3 {
   width: min(var(--max), calc(100% - 36px));
   margin: -48px auto 0;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.94);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.82)),
+    rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(219, 231, 243, 0.86);
   border-radius: var(--radius);
   box-shadow: 0 26px 80px rgba(15, 23, 42, 0.14);
@@ -488,7 +497,9 @@ h3 {
 }
 
 .about {
-  background: var(--paper);
+  background:
+    linear-gradient(115deg, rgba(186, 230, 253, 0.42), transparent 32%),
+    linear-gradient(180deg, #ffffff, var(--paper));
 }
 
 .founder-section {
@@ -551,7 +562,9 @@ h3 {
 
 .highlights,
 .services {
-  background: var(--surface);
+  background:
+    linear-gradient(125deg, rgba(224, 242, 254, 0.86), transparent 31%),
+    linear-gradient(180deg, #ffffff, #f7fbff);
 }
 
 .card-grid {
@@ -570,10 +583,12 @@ h3 {
 .highlight-card,
 .service-card,
 .feature-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100%;
   padding: 26px;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 255, 0.98));
   border: 1px solid rgba(219, 231, 243, 0.94);
@@ -593,6 +608,31 @@ h3 {
   box-shadow: 0 28px 68px rgba(15, 23, 42, 0.13);
 }
 
+.highlight-card::before,
+.service-card::before,
+.feature-card::before,
+.specialty-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  content: "";
+  background: linear-gradient(90deg, var(--cyan-500), var(--teal-400), var(--blue-500));
+}
+
+.highlight-card:nth-child(3n + 2)::before,
+.service-card:nth-child(3n + 2)::before,
+.feature-card:nth-child(3n + 2)::before,
+.specialty-card:nth-child(3n + 2)::before {
+  background: linear-gradient(90deg, var(--blue-500), var(--indigo-500), var(--violet-400));
+}
+
+.highlight-card:nth-child(3n + 3)::before,
+.service-card:nth-child(3n + 3)::before,
+.feature-card:nth-child(3n + 3)::before,
+.specialty-card:nth-child(3n + 3)::before {
+  background: linear-gradient(90deg, var(--teal-400), var(--mint-300), var(--sky-200));
+}
+
 .highlight-card {
   min-height: 132px;
   justify-content: flex-end;
@@ -600,12 +640,15 @@ h3 {
   font-size: 15px;
   font-weight: 850;
   background:
-    linear-gradient(180deg, rgba(6, 182, 212, 0.08), transparent 70%),
+    linear-gradient(145deg, rgba(224, 242, 254, 0.9), transparent 62%),
     var(--white);
 }
 
 .service-card {
   min-height: 270px;
+  background:
+    linear-gradient(180deg, rgba(224, 242, 254, 0.72), transparent 48%),
+    var(--white);
 }
 
 .icon {
@@ -614,9 +657,11 @@ h3 {
   width: 48px;
   height: 48px;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(6, 182, 212, 0.11));
-  border: 1px solid rgba(6, 182, 212, 0.26);
+  background:
+    linear-gradient(135deg, rgba(186, 230, 253, 0.75), rgba(45, 212, 191, 0.2));
+  border: 1px solid rgba(6, 182, 212, 0.28);
   border-radius: 50%;
+  box-shadow: 0 10px 26px rgba(6, 182, 212, 0.12);
 }
 
 .icon::before,
@@ -832,6 +877,7 @@ h3 {
 
 .specialties {
   background:
+    linear-gradient(115deg, rgba(134, 239, 172, 0.18), transparent 30%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(238, 247, 255, 0.92)),
     var(--paper);
 }
@@ -843,10 +889,12 @@ h3 {
 }
 
 .specialty-card {
+  position: relative;
   min-height: 220px;
   padding: 28px;
+  overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 255, 0.98));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 255, 0.98));
   border: 1px solid rgba(219, 231, 243, 0.94);
   border-radius: var(--radius);
   box-shadow: var(--shadow-soft);
@@ -864,6 +912,7 @@ h3 {
 
 .industries {
   background:
+    linear-gradient(135deg, rgba(186, 230, 253, 0.48), transparent 36%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(238, 247, 255, 0.92)),
     var(--paper);
 }
@@ -882,13 +931,24 @@ h3 {
   align-items: center;
   min-height: 42px;
   padding: 10px 15px;
-  color: #2d3e58;
+  color: #24425f;
   font-size: 14px;
   font-weight: 820;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(219, 231, 243, 0.94);
   border-radius: 999px;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.045);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.industry-list span:hover,
+.logo-cloud span:hover {
+  transform: translateY(-2px);
+  border-color: rgba(6, 182, 212, 0.34);
+  box-shadow: 0 16px 36px rgba(6, 182, 212, 0.11);
 }
 
 .government-section {
@@ -954,6 +1014,7 @@ h3 {
 .tech-stack {
   padding: 86px clamp(18px, 5vw, 72px);
   background:
+    linear-gradient(135deg, rgba(224, 242, 254, 0.92), transparent 34%),
     linear-gradient(180deg, #ffffff, var(--surface-blue));
   border-block: 1px solid var(--line);
 }
@@ -975,6 +1036,8 @@ h3 {
   min-width: 120px;
   justify-content: center;
   border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(240, 249, 255, 0.96));
 }
 
 .contact {

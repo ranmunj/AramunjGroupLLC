@@ -55,6 +55,12 @@ const initHeroNetwork = () => {
   let points = [];
   let frameId = 0;
   let lastTime = 0;
+  const networkColors = [
+    "103, 232, 249",
+    "45, 212, 191",
+    "96, 165, 250",
+    "139, 92, 246",
+  ];
 
   const resize = () => {
     const rect = heroCanvas.getBoundingClientRect();
@@ -73,6 +79,7 @@ const initHeroNetwork = () => {
       drift: 0.12 + Math.random() * 0.34,
       size: Math.random() > 0.72 ? 2.5 : 1.6,
       phase: Math.random() * Math.PI * 2,
+      accent: index % networkColors.length,
     }));
   };
 
@@ -83,9 +90,10 @@ const initHeroNetwork = () => {
 
     const scanX = ((time * 0.036) % (width + 220)) - 110;
     const scan = context.createLinearGradient(scanX - 90, 0, scanX + 90, 0);
-    scan.addColorStop(0, "rgba(45, 132, 255, 0)");
-    scan.addColorStop(0.5, "rgba(115, 199, 255, 0.18)");
-    scan.addColorStop(1, "rgba(45, 132, 255, 0)");
+    scan.addColorStop(0, "rgba(45, 212, 191, 0)");
+    scan.addColorStop(0.42, "rgba(103, 232, 249, 0.16)");
+    scan.addColorStop(0.64, "rgba(139, 92, 246, 0.1)");
+    scan.addColorStop(1, "rgba(45, 212, 191, 0)");
     context.fillStyle = scan;
     context.fillRect(scanX - 90, 0, 180, height);
 
@@ -108,7 +116,8 @@ const initHeroNetwork = () => {
         const dy = a.y - b.y;
         const distance = Math.hypot(dx, dy);
         if (distance < 142) {
-          context.strokeStyle = `rgba(115, 199, 255, ${0.16 * (1 - distance / 142)})`;
+          const color = networkColors[(a.accent + b.accent) % networkColors.length];
+          context.strokeStyle = `rgba(${color}, ${0.19 * (1 - distance / 142)})`;
           context.lineWidth = 1;
           context.beginPath();
           context.moveTo(a.x, a.y);
@@ -119,10 +128,15 @@ const initHeroNetwork = () => {
     }
 
     points.forEach((point) => {
-      context.fillStyle = "rgba(115, 199, 255, 0.72)";
+      const color = networkColors[point.accent];
+      context.fillStyle = `rgba(${color}, 0.78)`;
       context.fillRect(point.x - point.size / 2, point.y - point.size / 2, point.size, point.size);
-      context.fillStyle = "rgba(18, 105, 255, 0.18)";
+      context.fillStyle = `rgba(${color}, 0.2)`;
       context.fillRect(point.x - 5, point.y - 1, 10, 2);
+      if (point.size > 2) {
+        context.fillStyle = `rgba(${color}, 0.12)`;
+        context.fillRect(point.x - 12, point.y + 6, 24, 2);
+      }
     });
 
     if (!reduceMotion) {
