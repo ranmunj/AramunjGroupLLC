@@ -104,6 +104,10 @@ def parse_limit(handler: SimpleHTTPRequestHandler) -> int:
 
 
 def get_database_config() -> tuple[str, str]:
+    render_url = os.environ.get("RENDER_DATABASE_URL", "").strip()
+    if render_url:
+        return render_url, "RENDER_DATABASE_URL"
+
     structured_url = get_structured_database_url()
     if structured_url:
         return structured_url, "RDS_ENV"
@@ -327,7 +331,8 @@ def check_postgres_connection() -> dict:
 
 
 def configure_postgres_ssl() -> None:
-    if RDS_CA_BUNDLE.exists() and not os.environ.get("PGSSLROOTCERT"):
+    host = urlsplit(get_database_url()).hostname or ""
+    if host.endswith(".rds.amazonaws.com") and RDS_CA_BUNDLE.exists() and not os.environ.get("PGSSLROOTCERT"):
         os.environ["PGSSLROOTCERT"] = str(RDS_CA_BUNDLE)
 
 
