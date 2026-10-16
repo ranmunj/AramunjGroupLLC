@@ -88,7 +88,7 @@ To route contact inquiries to email while still saving them to Postgres, add SMT
 settings in Render:
 
 ```text
-INQUIRY_RECIPIENT=ranga@aramunj.com, info@aramunj.com
+INQUIRY_RECIPIENT=aramunj@icloud.com
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USERNAME=your_smtp_username
@@ -102,7 +102,7 @@ For Google Workspace / Gmail, use an app password instead of your normal Gmail
 password:
 
 ```text
-INQUIRY_RECIPIENT=ranga@aramunj.com, info@aramunj.com
+INQUIRY_RECIPIENT=aramunj@icloud.com
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=info@aramunj.com

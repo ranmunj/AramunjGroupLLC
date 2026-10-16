@@ -2,10 +2,12 @@ const leadForm = document.querySelector("#leadForm");
 const formStatus = document.querySelector("#formStatus");
 const navToggle = document.querySelector(".nav-toggle");
 const header = document.querySelector("[data-elevate]");
-const navLinks = document.querySelectorAll("nav a");
+const navLinks = document.querySelectorAll("#primaryNav a");
 const revealItems = document.querySelectorAll(".reveal");
 const heroCanvas = document.querySelector(".hero-live-bg");
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduceMotion = window.matchMedia(
+  "(prefers-reduced-motion: reduce)",
+).matches;
 
 const updateHeader = () => {
   header?.classList.toggle("is-elevated", window.scrollY > 12);
@@ -19,14 +21,23 @@ navToggle?.addEventListener("click", () => {
   navToggle.setAttribute("aria-expanded", String(isOpen));
 });
 
-navLinks.forEach((link) => {
-  link.addEventListener("click", () => {
-    document.body.classList.remove("nav-open");
-    navToggle?.setAttribute("aria-expanded", "false");
-  });
+const closeNavigation = () => {
+  document.body.classList.remove("nav-open");
+  navToggle?.setAttribute("aria-expanded", "false");
+};
+
+navLinks.forEach((link) => link.addEventListener("click", closeNavigation));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && document.body.classList.contains("nav-open")) {
+    closeNavigation();
+    navToggle?.focus();
+  }
+});
+window.matchMedia("(min-width: 981px)").addEventListener("change", (event) => {
+  if (event.matches) closeNavigation();
 });
 
-if ("IntersectionObserver" in window) {
+if ("IntersectionObserver" in window && !reduceMotion) {
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -39,7 +50,12 @@ if ("IntersectionObserver" in window) {
     { rootMargin: "0px 0px -10% 0px", threshold: 0.1 },
   );
 
-  revealItems.forEach((item) => observer.observe(item));
+  revealItems.forEach((item) => {
+    if (item.getBoundingClientRect().top > window.innerHeight) {
+      item.classList.add("is-pending");
+    }
+    observer.observe(item);
+  });
 } else {
   revealItems.forEach((item) => item.classList.add("is-visible"));
 }
@@ -55,6 +71,7 @@ const initHeroNetwork = () => {
   let points = [];
   let frameId = 0;
   let lastTime = 0;
+  let inView = true;
   const networkColors = [
     "103, 232, 249",
     "45, 212, 191",
@@ -116,7 +133,8 @@ const initHeroNetwork = () => {
         const dy = a.y - b.y;
         const distance = Math.hypot(dx, dy);
         if (distance < 142) {
-          const color = networkColors[(a.accent + b.accent) % networkColors.length];
+          const color =
+            networkColors[(a.accent + b.accent) % networkColors.length];
           context.strokeStyle = `rgba(${color}, ${0.19 * (1 - distance / 142)})`;
           context.lineWidth = 1;
           context.beginPath();
@@ -130,7 +148,12 @@ const initHeroNetwork = () => {
     points.forEach((point) => {
       const color = networkColors[point.accent];
       context.fillStyle = `rgba(${color}, 0.78)`;
-      context.fillRect(point.x - point.size / 2, point.y - point.size / 2, point.size, point.size);
+      context.fillRect(
+        point.x - point.size / 2,
+        point.y - point.size / 2,
+        point.size,
+        point.size,
+      );
       context.fillStyle = `rgba(${color}, 0.2)`;
       context.fillRect(point.x - 5, point.y - 1, 10, 2);
       if (point.size > 2) {
@@ -139,7 +162,7 @@ const initHeroNetwork = () => {
       }
     });
 
-    if (!reduceMotion) {
+    if (!reduceMotion && inView && !document.hidden) {
       frameId = window.requestAnimationFrame(draw);
     }
   };
@@ -147,17 +170,42 @@ const initHeroNetwork = () => {
   resize();
   draw();
 
-  window.addEventListener("resize", () => {
+  const updateAnimation = () => {
     window.cancelAnimationFrame(frameId);
-    resize();
-    draw();
-  }, { passive: true });
+    lastTime = 0;
+    if (inView && !document.hidden) draw();
+  };
+  document.addEventListener("visibilitychange", updateAnimation);
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      updateAnimation();
+    }).observe(heroCanvas);
+  }
+
+  window.addEventListener(
+    "resize",
+    () => {
+      window.cancelAnimationFrame(frameId);
+      resize();
+      updateAnimation();
+    },
+    { passive: true },
+  );
 };
 
 initHeroNetwork();
 
+let submitting = false;
+
 leadForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (submitting) return;
+  submitting = true;
+  const submitButton = leadForm.querySelector("button[type='submit']");
+  if (submitButton) submitButton.disabled = true;
+  leadForm.setAttribute("aria-busy", "true");
+  formStatus.dataset.state = "pending";
   formStatus.textContent = "Submitting your inquiry...";
 
   const payload = Object.fromEntries(new FormData(leadForm).entries());
@@ -168,17 +216,23 @@ leadForm?.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const result = await response.json();
+    await response.json();
 
     if (!response.ok) {
-      throw new Error(result.error || "Unable to send inquiry.");
+      throw new Error("Inquiry submission failed.");
     }
 
     leadForm.reset();
+    formStatus.dataset.state = "success";
     formStatus.textContent =
       "Thank you. Your inquiry has been received, and our team will contact you soon.";
-  } catch (error) {
+  } catch {
+    formStatus.dataset.state = "error";
     formStatus.textContent =
-      error.message || "We could not submit your inquiry. Please try again shortly.";
+      "We couldn't confirm your inquiry. Please try again shortly or email aramunj@icloud.com. Your form details have been kept here.";
+  } finally {
+    submitting = false;
+    leadForm.setAttribute("aria-busy", "false");
+    if (submitButton) submitButton.disabled = false;
   }
 });
