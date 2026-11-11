@@ -476,19 +476,23 @@ def deliver_email(
             host, port, context=ssl.create_default_context(), timeout=timeout
         ) as server:
             server.login(username, password)
-            server.send_message(message)
+            refused = server.send_message(message)
     else:
         with smtplib.SMTP(host, port, timeout=timeout) as server:
             server.starttls(context=ssl.create_default_context())
             server.login(username, password)
-            server.send_message(message)
+            refused = server.send_message(message)
+    if refused:
+        raise smtplib.SMTPRecipientsRefused(refused)
 
 
 def send_inquiry_email(lead: dict) -> str:
     if not smtp_configured():
         return "not_configured"
 
-    recipient = os.environ.get("INQUIRY_RECIPIENT", "").strip() or "aramunj@icloud.com"
+    recipient = os.environ.get("INQUIRY_RECIPIENT", "").strip() or (
+        "ranga@aramunjgroup.com, aramunj@icloud.com"
+    )
     subject = f"New Aramunj inquiry: {lead['interest']}"
     message = EmailMessage()
     message["Subject"] = subject
