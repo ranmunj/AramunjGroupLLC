@@ -75,12 +75,18 @@ class SiteTests(unittest.TestCase):
                     "https://www.linkedin.com/in/ranga-munjanja-940926229"):
             self.assertIn(url, links)
 
-    def test_public_contact_address_matches_inquiry_recipient(self):
+    def test_public_contact_details(self):
         mail_links = [attrs["href"] for tag, attrs in self.page.tags
                       if tag == "a" and attrs.get("href", "").startswith("mailto:")]
         self.assertTrue(mail_links)
-        self.assertEqual(set(mail_links), {"mailto:aramunj@icloud.com"})
-        self.assertEqual(json.loads(self.page.structured_data)["email"], "aramunj@icloud.com")
+        self.assertEqual(set(mail_links), {"mailto:ranga@aramunjgroup.com"})
+        phone_links = [attrs["href"] for tag, attrs in self.page.tags
+                       if tag == "a" and attrs.get("href", "").startswith("tel:")]
+        self.assertTrue(phone_links)
+        self.assertEqual(set(phone_links), {"tel:+19452174949"})
+        data = json.loads(self.page.structured_data)
+        self.assertEqual(data["email"], "ranga@aramunjgroup.com")
+        self.assertEqual(data["telephone"], "+19452174949")
 
 
 if __name__ == "__main__":

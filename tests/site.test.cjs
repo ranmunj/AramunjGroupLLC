@@ -145,7 +145,7 @@ test("server errors preserve form details and never expose database errors", asy
   assert.equal(app.form.didReset, undefined);
   assert.equal(app.status.dataset.state, "error");
   assert.doesNotMatch(app.status.textContent, /postgres|secret/);
-  assert.match(app.status.textContent, /aramunj@icloud.com/);
+  assert.match(app.status.textContent, /ranga@aramunjgroup\.com/);
   assert.equal(app.button.disabled, false);
   await app.submit();
   assert.equal(app.calls.length, 2);
