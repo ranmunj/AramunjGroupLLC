@@ -89,13 +89,13 @@ class SiteTests(unittest.TestCase):
         mail_links = [attrs["href"] for tag, attrs in self.page.tags
                       if tag == "a" and attrs.get("href", "").startswith("mailto:")]
         self.assertTrue(mail_links)
-        self.assertEqual(set(mail_links), {"mailto:ranga@aramunjgroup.com"})
+        self.assertEqual(set(mail_links), {"mailto:info@aramunjgroup.com"})
         phone_links = [attrs["href"] for tag, attrs in self.page.tags
                        if tag == "a" and attrs.get("href", "").startswith("tel:")]
         self.assertTrue(phone_links)
         self.assertEqual(set(phone_links), {"tel:+19452174949"})
         data = json.loads(self.page.structured_data)
-        self.assertEqual(data["email"], "ranga@aramunjgroup.com")
+        self.assertEqual(data["email"], "info@aramunjgroup.com")
         self.assertEqual(data["telephone"], "+19452174949")
 
     def test_featured_projects_explain_build_and_maintenance(self):

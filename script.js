@@ -229,7 +229,7 @@ leadForm?.addEventListener("submit", async (event) => {
   } catch {
     formStatus.dataset.state = "error";
     formStatus.textContent =
-      "We couldn't confirm your inquiry. Please try again shortly or email ranga@aramunjgroup.com. Your form details have been kept here.";
+      "We couldn't confirm your inquiry. Please try again shortly or email info@aramunjgroup.com. Your form details have been kept here.";
   } finally {
     submitting = false;
     leadForm.setAttribute("aria-busy", "false");
