@@ -14,21 +14,31 @@ class Page(HTMLParser):
         self.tags = []
         self.structured_data = ""
         self.in_json = False
+        self.articles = {}
+        self.article_id = None
         self.feed(source)
 
     def handle_starttag(self, tag, attributes):
         attributes = dict(attributes)
         self.tags.append((tag, attributes))
+        if tag == "article":
+            self.article_id = attributes.get("id")
+            if self.article_id:
+                self.articles[self.article_id] = []
         if tag == "script" and attributes.get("type") == "application/ld+json":
             self.in_json = True
 
     def handle_endtag(self, tag):
         if tag == "script":
             self.in_json = False
+        if tag == "article":
+            self.article_id = None
 
     def handle_data(self, value):
         if self.in_json:
             self.structured_data += value
+        if self.article_id:
+            self.articles[self.article_id].append(value)
 
 
 class SiteTests(unittest.TestCase):
@@ -87,6 +97,16 @@ class SiteTests(unittest.TestCase):
         data = json.loads(self.page.structured_data)
         self.assertEqual(data["email"], "ranga@aramunjgroup.com")
         self.assertEqual(data["telephone"], "+19452174949")
+
+    def test_featured_projects_explain_build_and_maintenance(self):
+        for project_id, title in (("project-zgtn", "Zimbabwe Global Talent Network"),
+                                  ("project-lumibright", "LumiBright Zimbabwe")):
+            text = " ".join(" ".join(self.page.articles[project_id]).split())
+            for detail in (title, "Built, managed & maintained by Aramunj Group LLC",
+                           "What we built", "How we maintain it", "What it demonstrates"):
+                self.assertIn(detail, text)
+            self.assertTrue(any(tag == "a" and attrs.get("href") == f"#{project_id}"
+                                for tag, attrs in self.page.tags))
 
 
 if __name__ == "__main__":
