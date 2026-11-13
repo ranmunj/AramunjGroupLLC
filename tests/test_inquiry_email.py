@@ -33,7 +33,7 @@ class InquiryEmailTests(unittest.TestCase):
             self.assertEqual(server.send_inquiry_email(self.lead), "sent")
         message = deliver.call_args.args[0]
         self.assertEqual(getaddresses(message.get_all("To")), [
-            ("", "ranga@aramunjgroup.com"), ("", "aramunj@icloud.com")
+            ("", "ranga@aramunjgroup.com"), ("", "aramunj@icloud.com"), ("", "aramunj@gmail.com")
         ])
         self.assertEqual(str(message["From"]), "sender@example.com")
         self.assertEqual(str(message["Reply-To"]), "visitor@example.com")
@@ -45,23 +45,23 @@ class InquiryEmailTests(unittest.TestCase):
     def test_blank_recipient_uses_default(self):
         with patch.dict(os.environ, {**self.environment, "INQUIRY_RECIPIENT": "  "}, clear=True), patch.object(server, "deliver_email") as deliver:
             server.send_inquiry_email(self.lead)
-        self.assertEqual(str(deliver.call_args.args[0]["To"]), "ranga@aramunjgroup.com, aramunj@icloud.com")
+        self.assertEqual(str(deliver.call_args.args[0]["To"]), "ranga@aramunjgroup.com, aramunj@icloud.com, aramunj@gmail.com")
 
-    def test_both_configured_recipients_receive_notification(self):
-        recipients = "ranga@aramunjgroup.com,aramunj@icloud.com"
+    def test_all_configured_recipients_receive_notification(self):
+        recipients = "ranga@aramunjgroup.com,aramunj@icloud.com,aramunj@gmail.com"
         with patch.dict(os.environ, {**self.environment, "INQUIRY_RECIPIENT": recipients}, clear=True), patch.object(server, "deliver_email") as deliver:
             self.assertEqual(server.send_inquiry_email(self.lead), "sent")
         self.assertEqual(getaddresses(deliver.call_args.args[0].get_all("To")), [
-            ("", "ranga@aramunjgroup.com"), ("", "aramunj@icloud.com")
+            ("", "ranga@aramunjgroup.com"), ("", "aramunj@icloud.com"), ("", "aramunj@gmail.com")
         ])
 
     def test_partial_recipient_rejection_is_not_reported_as_success(self):
         message = EmailMessage()
-        message["To"] = "ranga@aramunjgroup.com, aramunj@icloud.com"
+        message["To"] = "ranga@aramunjgroup.com, aramunj@icloud.com, aramunj@gmail.com"
         for use_ssl, transport in ((True, "SMTP_SSL"), (False, "SMTP")):
             with self.subTest(transport=transport), patch.object(server.smtplib, transport) as smtp:
                 smtp.return_value.__enter__.return_value.send_message.return_value = {
-                    "ranga@aramunjgroup.com": (550, b"Test rejection")
+                    "aramunj@gmail.com": (550, b"Test rejection")
                 }
                 with self.assertRaises(server.smtplib.SMTPRecipientsRefused):
                     server.deliver_email(message, "smtp.example.com", 465 if use_ssl else 587,

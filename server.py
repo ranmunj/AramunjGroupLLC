@@ -491,7 +491,7 @@ def send_inquiry_email(lead: dict) -> str:
         return "not_configured"
 
     recipient = os.environ.get("INQUIRY_RECIPIENT", "").strip() or (
-        "ranga@aramunjgroup.com, aramunj@icloud.com"
+        "ranga@aramunjgroup.com, aramunj@icloud.com, aramunj@gmail.com"
     )
     subject = f"New Aramunj inquiry: {lead['interest']}"
     message = EmailMessage()
